@@ -1,3 +1,8 @@
+0.000_002	2018-04-17	T. R. Wyant
+    Allow \d and [:digit:] in extended char classes.
+
+    Search for negated classes as well.
+
 0.000_001	2018-04-17	T. R. Wyant
     Initial version.
 
