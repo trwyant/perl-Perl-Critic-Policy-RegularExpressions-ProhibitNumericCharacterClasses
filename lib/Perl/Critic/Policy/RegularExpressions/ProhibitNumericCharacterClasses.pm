@@ -24,19 +24,19 @@ Readonly::Scalar my $EXPL =>
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
     q<\\d>          => {
         parameter   => '_allow_back_slash_dee',
-        replacement => '[0-9] or \p{PosixDigit}',
+        replacement => '[0-9] or \\p{PosixDigit}',
     },
     q<\\D>          => {
         parameter   => '_allow_back_slash_dee',
-        replacement => '[^0-9] or \P{PosixDigit}',
+        replacement => '[^0-9] or \\P{PosixDigit}',
     },
     q<[:digit:]>    => {
         parameter   => '_allow_posix_digit',
-        replacement => '[0-9] or \p{PosixDigit}',
+        replacement => '[0-9] or \\p{PosixDigit}',
     },
     q<[:^digit:]>    => {
         parameter   => '_allow_posix_digit',
-        replacement => '[^0-9] or \P{PosixDigit}',
+        replacement => '[^0-9] or \\P{PosixDigit}',
     },
 );
 
@@ -45,13 +45,19 @@ Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
 sub supported_parameters { return (
         {
             name        => 'allow_back_slash_dee',
-            description => 'Allow the \d class',
+            description => 'Allow the \\d class',
             behavior    => 'boolean',
             default_string  => '0',
         },
         {
             name        => 'allow_posix_digit',
             description => 'Allow the [:digit:] class',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
+        {
+            name        => 'prohibit_in_extended_character_class',
+            description => 'Prohibit \\d and [:digit:] in extended character classes',
             behavior    => 'boolean',
             default_string  => '0',
         },
@@ -99,6 +105,15 @@ sub violates {
         $char_class->modifier_asserted( 'a*' )
             and next;
 
+        # Even without /a or /aa, we allow extended character classes
+        # because they allow things like /(?[ [[:ascii:]] & \d ])/, and
+        # I do not propose to go down the rabbit hole of trying to
+        # recognize legitimate versus illegitimate uses. The test is
+        # this late because it involves walking the parse tree.
+        not $self->{_prohibit_in_extended_character_class}
+            and _is_in_extended_character_class( $char_class )
+            and next;
+
         push @violations, $self->violation(
             sprintf(
                 '%s can match outside ASCII range; use %s',
@@ -112,6 +127,20 @@ sub violates {
     }
 
     return @violations;
+}
+
+#-----------------------------------------------------------------------------
+
+# Return true if the given element is in an extended character class
+sub _is_in_extended_character_class {
+    my ( $elem ) = @_;
+    while ( 1 ) {
+        $elem->isa( 'PPIx::Regexp::Structure::RegexSet' )
+            and return $TRUE;
+        $elem = $elem->parent()
+            or return $FALSE;
+    }
+    return $FALSE;  # Can't get here, but perlcritic does not know that.
 }
 
 #-----------------------------------------------------------------------------
@@ -146,7 +175,9 @@ recommends C<[0-9]> or C<\p{PosixDigit}> instead.
 
 The C<\d> and C<[[:digit:]]> classes are accepted if the C</a> or C</aa>
 modifier is in effect, because in that case they are restricted to match
-only ASCII digits.
+only ASCII digits. They are also accepted in extended bracketed
+character classes, because there they can be intersected with
+C<[:ascii:]> to exclude non-ASCII digits.
 
 Because its recommendations run more or less counter to those of core
 policy
@@ -179,7 +210,8 @@ this policy spends most of its time disabled.
 
 This policy supports the following configuration items. The author
 strongly advises against turning these on unless you know what you are
-doing. Note that turning them both on effectively disables the policy.
+doing. Note that turning on both C<allow_back_slash_dee> and
+C<allow_posix_digit> effectively disables the policy.
 
 
 =head2 allow_back_slash_dee
@@ -205,6 +237,18 @@ F<.perlcriticrc> file:
     [RegularExpressions::ProhibitNumericCharacterClasses]
     allow_posix_digit = 1
 
+=head2 prohibit_in_extended_character_class
+
+By default, this policy allows C<\d> and C<[:digit:]> within an extended
+bracketed character class, because these allow things like
+
+    (?[ [:ascii:] & \d ])
+
+If you wish to prohibit them even here, you can add a block like this to
+your F<.perlcriticrc> file:
+
+    [RegularExpressions::ProhibitNumericCharacterClasses]
+    prohibit_in_extended_character_class = 1
 
 =head1 AUTHOR
 

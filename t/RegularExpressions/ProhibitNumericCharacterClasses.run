@@ -38,6 +38,25 @@ m/ (?a: \d ) /smx;
 
 #-----------------------------------------------------------------------------
 
+## name Accept \d and [:digit:] in extended character class
+## failures 0
+## cut
+
+m/ (?[ [:ascii:] & \d ]) /smx;
+qr{ (?[ [:ascii:] & [:digit:] ]) }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject \d and [:digit:] in extended character class if told to do so
+## parms { prohibit_in_extended_character_class => '1' }
+## failures 2
+## cut
+
+m/ (?[ [:ascii:] & \d ]) /smx;
+qr{ (?[ [:ascii:] & [:digit:] ]) }smx;
+
+#-----------------------------------------------------------------------------
+
 ## name Accept \d if told to
 ## parms { allow_back_slash_dee => '1' }
 ## failures 0
