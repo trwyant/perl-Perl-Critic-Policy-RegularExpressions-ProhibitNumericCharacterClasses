@@ -17,13 +17,14 @@ s/ \p{PosixDigit} //smx;
 
 #-----------------------------------------------------------------------------
 
-## name Reject \d and [:digit:]
-## failures 3
+## name Reject \d, \D, [:digit:], and [[:^digit:]]
+## failures 4
 ## cut
 
 m/ \d /smx;
 s/ [[:digit:]] //smx;
-qr{ \d }smx;
+qr{ \D }smx;
+qr{ [[:^digit:]] }smx;
 
 #-----------------------------------------------------------------------------
 

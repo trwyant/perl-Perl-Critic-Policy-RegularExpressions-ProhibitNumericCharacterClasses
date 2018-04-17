@@ -22,8 +22,22 @@ Readonly::Scalar my $EXPL =>
 # the content of the character class object, and the value is the
 # parameter that allows the object to be accepted.
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
-    q<\\d>           => '_allow_back_slash_dee',
-    q<[:digit:]>    => '_allow_posix_digit',
+    q<\\d>          => {
+        parameter   => '_allow_back_slash_dee',
+        replacement => '[0-9] or \p{PosixDigit}',
+    },
+    q<\\D>          => {
+        parameter   => '_allow_back_slash_dee',
+        replacement => '[^0-9] or \P{PosixDigit}',
+    },
+    q<[:digit:]>    => {
+        parameter   => '_allow_posix_digit',
+        replacement => '[0-9] or \p{PosixDigit}',
+    },
+    q<[:^digit:]>    => {
+        parameter   => '_allow_posix_digit',
+        replacement => '[^0-9] or \P{PosixDigit}',
+    },
 );
 
 #-----------------------------------------------------------------------------
@@ -69,13 +83,15 @@ sub violates {
     foreach my $char_class (
         @{ $ppix->find( 'PPIx::Regexp::Token::CharClass' ) || [] } ) {
 
+        my $content = $char_class->content();
+
         # Only interested in character classes that match digits.
-        my $ctrl = $NUMERIC_CHARACTER_CLASS{$char_class->content()}
+        my $ctrl = $NUMERIC_CHARACTER_CLASS{$content}
             or next;
 
         # If the user wants to allow this class, we give him or her the
         # rope, and even tie the noose on the end.
-        $self->{$ctrl}
+        $self->{$ctrl->{parameter}}
             and next;
 
         # The /a or /aa modifiers can be asserted in the scope of this
@@ -84,8 +100,11 @@ sub violates {
             and next;
 
         push @violations, $self->violation(
-            sprintf( '%s can match outside ASCII range; use [0-9] or \p{PosixDigit}',
-                $char_class->content() ),
+            sprintf(
+                '%s can match outside ASCII range; use %s',
+                $content,
+                $ctrl->{replacement},
+            ),
             $EXPL,
             $elem,
         );
