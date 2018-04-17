@@ -1,0 +1,12 @@
+This directory contains examples for the ProhibitNumericCharacterClasses
+Perl-Critic policy. The files are:
+
+README - This file.
+
+numeric-character-classes - This is a script that executes the
+    ProhibitNumericCharacterClasses policy. It is more or less
+    equivalent to
+    $ perlcritic --single ProhibitNumericCharacterClasses
+    but has its own configuration file. Use
+    $ numeric-character-classes --help
+    for the documentation.

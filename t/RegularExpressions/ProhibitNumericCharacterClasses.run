@@ -1,0 +1,92 @@
+## name Accept various non-numeric classes
+## failures 0
+## cut
+
+m/ \w /smx;
+s/ . //smx;
+qr/ [[:xdigit:]] /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept [0-9] and \p{PosixDigit}
+## failures 0
+## cut
+
+m/ [0-9] /smx;
+s/ \p{PosixDigit} //smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject \d and [:digit:]
+## failures 3
+## cut
+
+m/ \d /smx;
+s/ [[:digit:]] //smx;
+qr{ \d }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept \d and [;digit:] if /a is in effect
+## failures 0
+## cut
+
+m/ \d /smxa;
+m/ [[:digit:]] /smxaa;
+m/ (?a: \d ) /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept \d if told to
+## parms { allow_back_slash_dee => '1' }
+## failures 0
+## cut
+
+m/ \d /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject [:digit:] if told to accept \d
+## parms { allow_back_slash_dee => '1' }
+## failures 1
+## cut
+
+m/ [[:digit:]] /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept [:digit:] if told to
+## parms { allow_posix_digit => '1' }
+## failures 0
+## cut
+
+m/ [[:digit:]] /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject \d if told to accept [:digit:]
+## parms { allow_posix_digit => '1' }
+## failures 1
+## cut
+
+m/ \d /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept \d and [:digit:] if told to
+## parms { allow_back_slash_dee => '1', allow_posix_digit => '1' }
+## failures 0
+## cut
+
+qr{ \d [[:digit:]] }smx;
+
+#-----------------------------------------------------------------------------
+
+# Local Variables:
+#   mode: cperl
+#   cperl-indent-level: 4
+#   fill-column: 78
+#   indent-tabs-mode: nil
+#   c-indentation-style: bsd
+# End:
+# ex: set ts=8 sts=4 sw=4 tw=78 ft=perl expandtab shiftround :
