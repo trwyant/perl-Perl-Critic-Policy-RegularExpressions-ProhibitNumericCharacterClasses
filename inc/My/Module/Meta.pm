@@ -66,11 +66,8 @@ sub required_module_versions {
         'Perl::Critic::Document'    => 1.119,   # need 1.119 here
         'Perl::Critic::Policy'      => 1.119,
         'Perl::Critic::Utils'       => 1.119,
-        'PPI::Token::Symbol'        => 0,
-        'PPIx::QuoteLike'           => 0.005,
         'PPIx::Regexp'              => 0.057,
         'Readonly'                  => 0,
-        'Scalar::Util'              => 0,
         @args,
     );
 }
@@ -78,14 +75,21 @@ sub required_module_versions {
 sub build_required_module_versions {
     return (
         'lib'       => 0,
+        'charnames' => 0,
+        'open'      => 0,
         'Carp'      => 0,
+        'English'   => 0,
+        'PPI::Document'             => 0,
+        'Perl::Critic::TestUtils'   => 0,
+        'Test::More'                => 0,
+        'Test::Perl::Critic::Policy'    => 0,
     );
 }
 
 sub recommended_module_versions {
     return (
         'Readonly::XS'  => 0,
-        'File::Which'   => 0,
+##      'File::Which'   => 0,
     );
 }
 
