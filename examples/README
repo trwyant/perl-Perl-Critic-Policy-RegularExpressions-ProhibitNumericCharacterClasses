@@ -3,6 +3,10 @@ Perl-Critic policy. The files are:
 
 README - This file.
 
+devanagari.t - This is a demonstration, written in the form of a test,
+    of the result of matching some character classes against non-ASCII
+    digits, specifically "\N{DEVANAGARI DIGIT ONE}".
+
 numeric-character-classes - This is a script that executes the
     ProhibitNumericCharacterClasses policy. It is more or less
     equivalent to
@@ -10,3 +14,5 @@ numeric-character-classes - This is a script that executes the
     but has its own configuration file. Use
     $ numeric-character-classes --help
     for the documentation.
+
+# ex: set filetype=text textwidth=72 autoindent :
