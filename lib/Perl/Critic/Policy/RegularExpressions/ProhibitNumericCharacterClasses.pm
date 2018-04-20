@@ -105,14 +105,23 @@ sub violates {
         $char_class->modifier_asserted( 'a*' )
             and next;
 
-        # Even without /a or /aa, we allow extended character classes
-        # because they allow things like /(?[ [[:ascii:]] & \d ])/, and
-        # I do not propose to go down the rabbit hole of trying to
-        # recognize legitimate versus illegitimate uses. The test is
-        # this late because it involves walking the parse tree.
-        not $self->{_prohibit_in_extended_character_class}
-            and _is_in_extended_character_class( $char_class )
-            and next;
+        # Extended bracketed character classes need some more analysis
+        if ( _is_in_extended_character_class( $char_class ) ) {
+
+            # Unless so configured, we accept anything in an extended
+            # bracketed character class.
+            $self->{_prohibit_in_extended_character_class}
+                or next;
+
+            # Analyzing all the possibilities is more like solving the
+            # Turing halting problem than I want to tackle, but it is
+            # not terribly hard to handle a simply-coded intersection.
+            # If we intersect with a class that is known to restrict us
+            # to ASCII, we accept it.
+            _is_intersected_with_ascii( $char_class )
+                and next;
+
+        }
 
         push @violations, $self->violation(
             sprintf(
@@ -123,6 +132,7 @@ sub violates {
             $EXPL,
             $elem,
         );
+
 
     }
 
@@ -141,6 +151,50 @@ sub _is_in_extended_character_class {
             or return $FALSE;
     }
     return $FALSE;  # Can't get here, but perlcritic does not know that.
+}
+
+#-----------------------------------------------------------------------------
+
+Readonly::Hash my %ASCII_CLASS => hashify( qw<
+    ahex
+    ascii
+    asciihexdigit
+    basiclatin
+    posixprint
+    posixword
+    posixxdigit
+    xdigit
+    > );
+Readonly::Hash my %INTERSECTION_OPERATOR => hashify( qw< & > );
+
+# Return a true value if the argument is intersected with a character
+# class that is known to restrict it to ASCII. The operations can occur
+# in either order.
+sub _is_intersected_with_ascii {
+    my ( $elem ) = @_;
+    foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
+        my $sib = $elem->$nav()
+            or next;
+        $sib->isa( 'PPIx::Regexp::Token::Operator' )
+            or next;
+        $INTERSECTION_OPERATOR{ $sib->content() }
+            or next;
+        $sib = $sib->$nav()
+            or next;
+        $sib->isa( 'PPIx::Regexp::Token::CharClass' )
+            or next;
+        local $_ = $sib->content();
+        if ( $sib->isa( 'PPIx::Regexp::Token::CharClass::POSIX' ) ) {
+            s/ \A \[ : //smx; s/ : \] \z //smx;
+        } elsif ( $sib->isa( 'PPIx::Regexp::Token::CharClass::Simple' ) ) {
+            s/ \A \\p [{] \s* //smxi; s/ \s* [}] \z //smx;
+            s/ \A (?: is_ | (?: block | blk ) \s* [:=] \s* ) //smx;
+            s/ [-_\s]+ //smxg;
+            $_ = lc;
+        }
+        return $ASCII_CLASS{$_};
+    }
+    return $FALSE;
 }
 
 #-----------------------------------------------------------------------------
@@ -188,24 +242,6 @@ the code base.
 Oddly enough, the C<[:xdigit:]> character class appears not to have this
 problem.
 
-Telling L<Perl::Critic|Perl::Critic> to allow a specific violation will
-be problematic in the case of multi-line regular expressions, because 
-L<Perl::Critic|Perl::Critic> can not see comments inside a regular
-expression. Unfortunately the only workable options known to this author
-are:
-
-=over
-
-=item Re-code using C<\p{...}>, or
-
-=item Annotate the block of code in which the regular expression
-appears.
-
-=back
-
-Neither of these is particularly desirable, and it may simply be that
-this policy spends most of its time disabled.
-
 =head1 CONFIGURATION
 
 This policy supports the following configuration items. The author
@@ -249,6 +285,26 @@ your F<.perlcriticrc> file:
 
     [RegularExpressions::ProhibitNumericCharacterClasses]
     prohibit_in_extended_character_class = 1
+
+Even if this configuration item is turned on, the policy still accepts
+C<\d> and C<[:digit:]> if they occur in simple-to-analyze intersections
+with classes that suitably restrict the matching characters, like the
+example above. Currently-implemented restrictions include the following
+Unicode character classes and their trivial variants:
+
+    \p{AHex}
+    \p{ASCII}
+    \p{ASCII_Hex_Digit}
+    \p{Basic_Latin}
+    \p{Posix_Print}
+    \p{Posix_Word}
+    \p{Posix_X_Digit}
+    \p{X_Digit}
+
+Contemplation of the above list (which is surely incomplete) and the
+meaning of the phrase 'trivial variants', informed by a perusal of
+F<perluniprops>, should give the reader an inkling of why the author
+recommends caution with this configuration item.
 
 =head1 AUTHOR
 

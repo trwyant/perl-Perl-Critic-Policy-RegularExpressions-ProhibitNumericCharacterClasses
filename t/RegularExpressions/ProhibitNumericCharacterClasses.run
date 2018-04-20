@@ -42,8 +42,8 @@ m/ (?a: \d ) /smx;
 ## failures 0
 ## cut
 
-m/ (?[ [:ascii:] & \d ]) /smx;
-qr{ (?[ [:ascii:] & [:digit:] ]) }smx;
+m/ (?[ \d ]) /smx;
+qr{ (?[ [:digit:] ]) }smx;
 
 #-----------------------------------------------------------------------------
 
@@ -52,8 +52,19 @@ qr{ (?[ [:ascii:] & [:digit:] ]) }smx;
 ## failures 2
 ## cut
 
+m/ (?[ \d ]) /smx;
+qr{ (?[ [:digit:] ]) }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept \d and [:digit:] in extended character class if intersected with ASCII
+## parms { prohibit_in_extended_character_class => '1' }
+## failures 0
+## cut
+
 m/ (?[ [:ascii:] & \d ]) /smx;
-qr{ (?[ [:ascii:] & [:digit:] ]) }smx;
+qr< (?[ [:digit:] & \p{ASCII} ]) >smx;
+s/ (?[ \d & [:xdigit:] ]) //smx;
 
 #-----------------------------------------------------------------------------
 
