@@ -160,6 +160,24 @@ Readonly::Hash my %ASCII_CLASS => hashify( qw<
     ascii
     asciihexdigit
     basiclatin
+    latin
+    latin1
+    latin1sup
+    latin1supplement
+    latinexta
+    latinextadditional
+    latinextb
+    latinextc
+    latinextd
+    latinexte
+    latinextendeda
+    latinextendedadditional
+    latinextendedb
+    latinextendedc
+    latinextendedd
+    latinextendede
+    latn
+    posixalnum
     posixprint
     posixword
     posixxdigit
@@ -188,7 +206,9 @@ sub _is_intersected_with_ascii {
             s/ \A \[ : //smx; s/ : \] \z //smx;
         } elsif ( $sib->isa( 'PPIx::Regexp::Token::CharClass::Simple' ) ) {
             s/ \A \\p [{] \s* //smxi; s/ \s* [}] \z //smx;
-            s/ \A (?: is_ | (?: block | blk ) \s* [:=] \s* ) //smx;
+            s{ \A (?: is_ |
+            (?: block | blk | script | script_extensions )
+            \s* [:=] \s*) }{}smx;
             s/ [-_\s]+ //smxg;
             $_ = lc;
         }
@@ -292,14 +312,32 @@ with classes that suitably restrict the matching characters, like the
 example above. Currently-implemented restrictions include the following
 Unicode character classes and their trivial variants:
 
-    \p{AHex}
-    \p{ASCII}
-    \p{ASCII_Hex_Digit}
-    \p{Basic_Latin}
-    \p{Posix_Print}
-    \p{Posix_Word}
-    \p{Posix_X_Digit}
-    \p{X_Digit}
+    p{AHex}
+    p{ASCII}
+    p{ASCII_Hex_Digit}
+    p{Basic_Latin}
+    p{Latin}
+    p{Latin_1}
+    p{Latin_1_Sup}
+    p{Latin_1_Supplement}
+    p{Latin_Ext_A}
+    p{Latin_Ext_Additional}
+    p{Latin_Ext_B}
+    p{Latin_Ext_C}
+    p{Latin_Ext_D}
+    p{Latin_Ext_E}
+    p{Latin_Extended_A}
+    p{Latin_Extended_Additional}
+    p{Latin_Extended_B}
+    p{Latin_Extended_C}
+    p{Latin_Extended_D}
+    p{Latin_Extended_E}
+    p{Latn}
+    p{Posix_Alnum}
+    p{Posix_Print}
+    p{Posix_Word}
+    p{Posix_X_Digit}
+    p{X_Digit}
 
 Contemplation of the above list (which is surely incomplete) and the
 meaning of the phrase 'trivial variants', informed by a perusal of
