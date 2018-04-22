@@ -1,3 +1,16 @@
+0.000_003	2018-04-22	T. R. Wyant
+    Add parameter allow_in_extended_character_class. This is an
+    enumeration with values 'always', 'safe', and 'never'. The default
+    is 'always'. The 'safe' value does a very simplistic analysis to see
+    if the potentially-offending class is intersected with another class
+    that restricts the intersection to ASCII or a subset thereof.
+
+    Get dependencies up to snuff.
+
+    Add examples/devanagari.t. This is a demonstration (in the form of
+    a test) of the success or failure of various Perl character classes
+    matching against "\N{DEVANAGARI DIGIT ONE}".
+
 0.000_002	2018-04-17	T. R. Wyant
     Allow \d and [:digit:] in extended char classes.
 
