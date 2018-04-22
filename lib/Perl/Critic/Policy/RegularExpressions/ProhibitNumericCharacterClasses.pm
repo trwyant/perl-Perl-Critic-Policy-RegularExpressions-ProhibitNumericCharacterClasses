@@ -265,6 +265,12 @@ L<RegularExpressions::ProhibitEnumeratedClasses|Perl::Critic::Policy::RegularExp
 the user should consider whether this policy meets the specific needs of
 the code base.
 
+If you really have to deal with input conversion of non-ASCII digits,
+see the L<Unicode::UCD|Unicode::UCD> L<num()|Unicode::UCD/num>
+subroutine. You should be aware that even this will not convert
+everything matched by C</\d+/>; it requires all the digits to be in the
+same script, and has other restrictions as well.
+
 Oddly enough, the C<[:xdigit:]> character class appears not to have this
 problem.
 
