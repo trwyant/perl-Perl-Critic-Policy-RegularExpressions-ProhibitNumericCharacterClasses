@@ -40,6 +40,18 @@ Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
     },
 );
 
+# Analyze a potentially-offending character class in an extended
+# bracketed character class. We need a hash entry for each permitted
+# value of the {allow_in_extended_character_class} policy parameter. The
+# code receives the element under analysis as its only argument. It
+# returns a true value to accept the element, and a false value to
+# reject it (i.e. make it a violation).
+Readonly::Hash my %OK_IN_EXTENDED_CHARACTER_CLASS => (
+    always  => sub { return $TRUE },
+    safe    => \&_is_intersected_with_ascii,
+    never   => sub { return $FALSE },
+);
+
 #-----------------------------------------------------------------------------
 
 sub supported_parameters { return (
@@ -56,10 +68,11 @@ sub supported_parameters { return (
             default_string  => '0',
         },
         {
-            name        => 'prohibit_in_extended_character_class',
-            description => 'Prohibit \\d and [:digit:] in extended character classes',
-            behavior    => 'boolean',
-            default_string  => '0',
+            name        => 'allow_in_extended_character_class',
+            description => 'Allow \\d and [:digit:] in extended character classes',
+            behavior    => 'enumeration',
+            enumeration_values  => [ qw{ always safe never } ],
+            default_string  => 'always',
         },
     ) }
 
@@ -106,22 +119,11 @@ sub violates {
             and next;
 
         # Extended bracketed character classes need some more analysis
-        if ( _is_in_extended_character_class( $char_class ) ) {
-
-            # Unless so configured, we accept anything in an extended
-            # bracketed character class.
-            $self->{_prohibit_in_extended_character_class}
-                or next;
-
-            # Analyzing all the possibilities is more like solving the
-            # Turing halting problem than I want to tackle, but it is
-            # not terribly hard to handle a simply-coded intersection.
-            # If we intersect with a class that is known to restrict us
-            # to ASCII, we accept it.
-            _is_intersected_with_ascii( $char_class )
-                and next;
-
-        }
+        _is_in_extended_character_class( $char_class )
+            and $OK_IN_EXTENDED_CHARACTER_CLASS{
+                $self->{_allow_in_extended_character_class}}->(
+                    $char_class )
+            and next;
 
         push @violations, $self->violation(
             sprintf(
@@ -293,24 +295,41 @@ F<.perlcriticrc> file:
     [RegularExpressions::ProhibitNumericCharacterClasses]
     allow_posix_digit = 1
 
-=head2 prohibit_in_extended_character_class
+=head2 allow_in_extended_character_class
 
 By default, this policy allows C<\d> and C<[:digit:]> within an extended
 bracketed character class, because these allow things like
 
     (?[ [:ascii:] & \d ])
 
-If you wish to prohibit them even here, you can add a block like this to
+If you wish to tighten things up here, you can add a block like this to
 your F<.perlcriticrc> file:
 
     [RegularExpressions::ProhibitNumericCharacterClasses]
-    prohibit_in_extended_character_class = 1
+    allow_in_extended_character_class = 'safe'
 
-Even if this configuration item is turned on, the policy still accepts
-C<\d> and C<[:digit:]> if they occur in simple-to-analyze intersections
-with classes that suitably restrict the matching characters, like the
-example above. Currently-implemented restrictions include the following
-Unicode character classes and their trivial variants:
+The permitted values are:
+
+=over
+
+=item always
+
+The default. C<\d> and C<[:digit:]> are always allowed in extended
+bracketed character classes.
+
+=item never
+
+C<\d> and C<[:digit:]> are never allowed in extended bracketed character
+classes.
+
+=item safe
+
+The policy tries to determine whether the use of C<\d> or C<[:digit:]>
+is intersected with another class that restricts it to ASCII. The policy
+makes this determination by seeing if the class is intersected on the
+right or the left with one of the following Unicode character
+classes or their trivial variants, or the corresponding POSIX class if
+any:
 
     p{AHex}
     p{ASCII}
@@ -343,6 +362,8 @@ Contemplation of the above list (which is surely incomplete) and the
 meaning of the phrase 'trivial variants', informed by a perusal of
 F<perluniprops>, should give the reader an inkling of why the author
 recommends caution with this configuration item.
+
+=back
 
 =head1 AUTHOR
 

@@ -48,7 +48,7 @@ qr{ (?[ [:digit:] ]) }smx;
 #-----------------------------------------------------------------------------
 
 ## name Reject \d and [:digit:] in extended character class if told to do so
-## parms { prohibit_in_extended_character_class => '1' }
+## parms { allow_in_extended_character_class => 'never' }
 ## failures 2
 ## cut
 
@@ -58,13 +58,23 @@ qr{ (?[ [:digit:] ]) }smx;
 #-----------------------------------------------------------------------------
 
 ## name Accept \d and [:digit:] in extended character class if intersected with ASCII
-## parms { prohibit_in_extended_character_class => '1' }
+## parms { allow_in_extended_character_class => 'safe' }
 ## failures 0
 ## cut
 
 m/ (?[ [:ascii:] & \d ]) /smx;
 qr< (?[ [:digit:] & \p{ASCII} ]) >smx;
 s/ (?[ \d & [:xdigit:] ]) //smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject \d and [:digit:] in extended character class unless intersected with ASCII
+## parms { allow_in_extended_character_class => 'safe' }
+## failures 2
+## cut
+
+m/ (?[ \d ]) /smx;
+qr< (?[ [:digit:] ]) >smx;
 
 #-----------------------------------------------------------------------------
 
