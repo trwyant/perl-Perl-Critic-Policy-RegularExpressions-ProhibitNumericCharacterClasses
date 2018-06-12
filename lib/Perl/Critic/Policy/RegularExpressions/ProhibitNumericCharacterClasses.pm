@@ -78,6 +78,18 @@ sub supported_parameters { return (
             enumeration_values  => [ qw{ always safe never } ],
             default_string  => 'always',
         },
+        {
+            name        => 'allow_if_single_script',
+            description => 'Allow \\d and [:digit:] if restricted to a single script',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
+        {
+            name        => 'allow_if_singleton',
+            description => 'Allow \\d and [:digit:] if unquantified or quantified to at most one',
+            behavior    => 'boolean',
+            default_string  => '0',
+        },
     ) }
 
 sub default_severity     { return $SEVERITY_MEDIUM       }
@@ -117,6 +129,14 @@ sub violates {
         $self->{$ctrl->{parameter}}
             and next;
 
+        # If we're part of a bracketed character class that contains
+        # non-numerics, we are OK.
+        if ( my $parent = $char_class->parent() ) {
+            $parent->isa( 'PPIx::Regexp::Structure::CharClass' )
+                and not _is_char_class_numeric( $parent )
+                and next;
+        }
+
         # The /a or /aa modifiers can be asserted in the scope of this
         # element even if they are not asserted globally.
         $char_class->modifier_asserted( 'a*' )
@@ -129,6 +149,17 @@ sub violates {
                     $char_class )
             and next;
 
+        # Allow inside (*script_run:...) if the user wants that
+        $self->{_allow_if_single_script}
+            and _is_in_script_run( $char_class )
+            and next;
+
+        # Allow singletons if the user wants that
+        $self->{_allow_if_singleton}
+            and _is_singleton( $char_class )
+            and next;
+
+        # We have exhausted all appeals. Guilty as charged.
         push @violations, $self->violation(
             sprintf(
                 '%s can match outside ASCII range; use %s',
@@ -147,6 +178,32 @@ sub violates {
 
 #-----------------------------------------------------------------------------
 
+# Return true if a bracketed character class represents only a number of
+# some sort, and is therefore something we might want to forbid.
+sub _is_char_class_numeric {
+    my ( $elem ) = @_;
+    foreach my $kid ( $elem->schildren() ) {
+        $kid->isa( 'PPIx::Regexp::Token::CharClass' )
+            and $NUMERIC_CHARACTER_CLASS{$kid->content()}
+            and next;
+        my $content = $kid->content();
+        $kid->isa( 'PPIx::Regexp::Token::Literal' )
+            and $content =~ m/ \d /smx  # SIC
+            and next;
+        $kid->isa( 'PPIx::Regexp::Node::Range' )
+            and $content =~ m/ \A \d - \d \z /smx   # SIC
+            and next;
+
+        # At this point, the current child, and therefore the entire
+        # bracketed character class, MUST represent something other than
+        # just a number.
+        return $FALSE;
+    }
+    return $TRUE;
+}
+
+#-----------------------------------------------------------------------------
+
 # Return true if the given element is in an extended character class
 sub _is_in_extended_character_class {
     my ( $elem ) = @_;
@@ -157,6 +214,76 @@ sub _is_in_extended_character_class {
             or return $FALSE;
     }
     return $FALSE;  # Can't get here, but perlcritic does not know that.
+}
+
+#-----------------------------------------------------------------------------
+
+# Return true if the given element is contained in a script run
+
+sub _is_in_script_run {
+    my ( $elem ) = @_;
+    while ( $elem = $elem->parent() ) {
+        $elem->isa( 'PPIx::Regexp::Structure::Script_Run' )
+            and return $TRUE;
+    }
+    return $FALSE;
+}
+
+#-----------------------------------------------------------------------------
+
+# Return true if the given element matches at most one digit
+
+Readonly::Hash my %AT_MOST_ONE => hashify( q<?>, q<{0,1}>, q<{1}> );
+
+sub _is_singleton {
+    my ( $elem ) = @_;
+
+    # If our element is part of a character class we analyze that.
+    # CAVEAT: if the class has not already been checked, we need to do
+    # that here, essentially re-enabling the commented-out code a couple
+    # lines below.
+    if ( my $parent = $elem->parent() ) {
+        $parent->isa( 'PPIx::Regexp::Structure::CharClass' )
+##          and not _is_char_class_numeric( $parent )
+##          and return $TRUE;
+            and $elem = $parent;
+    }
+
+    # Check the next significant sibling if there is one.
+    if ( my $next = $elem->snext_sibling() ) {
+        my $content = $next->content();
+
+        # If it is a quantifier, we fail the test unless it specifies at
+        # most one match.
+        if ( $next->is_quantifier() ) {
+            $AT_MOST_ONE{$content}
+                or return $FALSE;
+
+            # If there is nothing after it, we're good.
+            $next = $next->snext_sibling()
+                or return $TRUE;
+            $content = $next->comtemt();
+        }
+
+        # If it's another numeric character class, we have at least two
+        # in a row. So we flunk.
+        $next->isa( 'PPIx::Regexp::Token::CharClass' )
+            and $NUMERIC_CHARACTER_CLASS{$content}
+            and return $FALSE;
+
+        # If it's a bracketed character class we need to dig into it a
+        # bit. If it contains any of the offending character classes, we
+        # flunk.
+        $next->isa( 'PPIx::Regexp::Structure::CharClass' )
+            and _is_char_class_numeric( $next )
+            and return $FALSE;
+
+    }
+
+    # If we get here, our argument is a numeric class not followed by
+    # another and either not quantified or quantified to at most one. So
+    # we accept it.
+    return $TRUE;
 }
 
 #-----------------------------------------------------------------------------
@@ -253,11 +380,20 @@ C<\d> and C<[[:digit:]]> may match more than the usual ASCII digit
 characters, which are what the usual numeric conversion expects, and
 recommends C<[0-9]> or C<\p{PosixDigit}> instead.
 
-The C<\d> and C<[[:digit:]]> classes are accepted if the C</a> or C</aa>
-modifier is in effect, because in that case they are restricted to match
-only ASCII digits. They are also accepted in extended bracketed
-character classes, because there they can be intersected with
-C<[:ascii:]> to exclude non-ASCII digits.
+In the default configuration, the C<\d> and C<[[:digit:]]> classes are
+accepted under the following conditions:
+
+=over
+
+=item The C</a> or C</aa> modifier is in effect, because in that case
+they are restricted to match only ASCII digits;
+
+=item In bracketed character classes that also specify non-digits;
+
+=item In extended bracketed character classes, because there they can be
+intersected with things like C<[:ascii:]> to exclude non-ASCII digits.
+
+=back
 
 Because its recommendations run more or less counter to those of core
 policy
@@ -374,6 +510,42 @@ F<perluniprops>, should give the reader an inkling of why the author
 recommends caution with this configuration item.
 
 =back
+
+=head2 allow_if_single_script
+
+Perl 5.27.9 introduced the C<(*script_run:...)> construction, which
+requires all characters inside it to come from the same script. If you
+wish to allow C<\d> and C<[:digit:]> within the scope of this
+construction, you can add a block like this to your F<.perlcriticrc>
+file:
+
+    [RegularExpressions::ProhibitNumericCharacterClasses]
+    allow_if_single_script = 1
+
+Note that the script_run construction was actually introduced in 5.27.8,
+but in that release it was spelled C<(+script_run:...)>.
+
+=head2 allow_if_singleton
+
+In the spirit of C<allow_if_single_script>, you can configure this
+policy to accept C<\d> and C<[:digit:]> if they are unquantified, or
+quantified to allow at most one, by adding a block like this to your
+F<.perlcriticrc> file:
+
+    [RegularExpressions::ProhibitNumericCharacterClasses]
+    allow_if_singleton = 1
+
+In the case of something like C<\d\d>, the first C<\d> will be declared
+in violation of this policy even if this configuration item has been set
+true, because the whole is equivalent to C<\d{2}>.
+
+The rationale for this is that a single digit can not represent more
+than one script, and is therefore not subject to the kind of problem
+this policy is intended to detect.
+
+This logic is controlled by a separate configuration item because the
+analysis involved in the implementation is a bit involved, and I am
+unsure I have covered all the corner cases.
 
 =head1 AUTHOR
 

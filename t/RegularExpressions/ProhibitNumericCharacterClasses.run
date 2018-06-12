@@ -18,23 +18,33 @@ s/ \p{PosixDigit} //smx;
 #-----------------------------------------------------------------------------
 
 ## name Reject \d, \D, [:digit:], and [[:^digit:]]
-## failures 4
+## failures 5
 ## cut
 
 m/ \d /smx;
+m/ [\d] /smx;
 s/ [[:digit:]] //smx;
 qr{ \D }smx;
 qr{ [[:^digit:]] }smx;
 
 #-----------------------------------------------------------------------------
 
-## name Accept \d and [;digit:] if /a is in effect
+## name Accept \d and [:digit:] if /a is in effect
 ## failures 0
 ## cut
 
 m/ \d /smxa;
 m/ [[:digit:]] /smxaa;
 m/ (?a: \d ) /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept \d and [:digit:] if only part of a bracketed class
+## failures 0
+## cut
+
+m/ [\da-z] /smx;
+m/ [[:digit:]A-Z] /smx;
 
 #-----------------------------------------------------------------------------
 
@@ -120,6 +130,53 @@ m/ \d /smx;
 ## cut
 
 qr{ \d [[:digit:]] }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject inside (*script_run: ... ) by default
+## failures 1
+## cut
+
+qr{ (*script_run: \d ) }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept inside (*script_run: ... ) if told to
+## parms { allow_if_single_script => '1' }
+## failures 0
+## cut
+
+qr{ (*script_run: \d ) }smx;
+
+#-----------------------------------------------------------------------------
+
+## name Accept singleton if told to do so
+## parms { allow_if_singleton => '1' }
+## failures 0
+## cut
+
+m/ \d /smx;
+m/ \d? /smx;
+m/ \d{1} /smx;
+m/ \d{0,1} /smx;
+m/ \d \w /smx;
+m/ [\d] /smx;
+m/ [\d]? /smx;
+m/ [\d]{1} /smx;
+m/ [\d] \w /smx;
+
+#-----------------------------------------------------------------------------
+
+## name Reject non-singleton even if accepting singleton
+## parms { allow_if_singleton => '1' }
+## failures 5
+## cut
+
+m/ \d* /smx;
+m/ \d+ /smx;
+m/ \d{0,} /smx;
+m/ \d\d /smx;
+m/ [\d][\d] /smx;
 
 #-----------------------------------------------------------------------------
 
