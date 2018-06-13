@@ -25,23 +25,32 @@ Readonly::Scalar my $EXPL =>
 # The following character classes _may_ represent violations. The key is
 # the content of the character class object, and the value is the
 # parameter that allows the object to be accepted.
-Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
+
+Readonly::Hash my %NUMERIC_CHARACTER_CLASS_ASSERTED => (
     q<\\d>          => {
         parameter   => '_allow_back_slash_dee',
         replacement => '[0-9] or \\p{PosixDigit}',
-    },
-    q<\\D>          => {
-        parameter   => '_allow_back_slash_dee',
-        replacement => '[^0-9] or \\P{PosixDigit}',
     },
     q<[:digit:]>    => {
         parameter   => '_allow_posix_digit',
         replacement => '[0-9] or \\p{PosixDigit}',
     },
+);
+
+Readonly::Hash my %NUMERIC_CHARACTER_CLASS_NEGATED => (
+    q<\\D>          => {
+        parameter   => '_allow_back_slash_dee',
+        replacement => '[^0-9] or \\P{PosixDigit}',
+    },
     q<[:^digit:]>    => {
         parameter   => '_allow_posix_digit',
         replacement => '[^0-9] or \\P{PosixDigit}',
     },
+);
+
+Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
+    %NUMERIC_CHARACTER_CLASS_ASSERTED,
+    %NUMERIC_CHARACTER_CLASS_NEGATED,
 );
 
 # Analyze a potentially-offending character class in an extended
@@ -129,13 +138,26 @@ sub violates {
         $self->{$ctrl->{parameter}}
             and next;
 
-        # If we're part of a bracketed character class that contains
-        # non-numerics, we are OK.
-        if ( my $parent = $char_class->parent() ) {
-            $parent->isa( 'PPIx::Regexp::Structure::CharClass' )
-                and not _is_char_class_numeric( $parent )
-                and next;
-        }
+        # We do{} to make the following a compound statement. That way,
+        # the 'next' refers to the foreach() loop. Without the 'do', the
+        # following is a single-iteration loop, and I would need to
+        # label the foreach() to get the effect I want.
+        do {
+            my $parent;
+            # If we're in a bracketed character class
+            if ( $parent = $char_class->parent()
+                    and $parent->isa(
+                    'PPIx::Regexp::Structure::CharClass' ) ) {
+                # We're OK if it is not equivalent to a numeric class
+                _is_char_class_numeric( $parent )
+                    or next;
+            # Otherwise
+            } else {
+                # We're OK if we're a negated class.
+                $NUMERIC_CHARACTER_CLASS_NEGATED{$content}
+                    and next;
+            }
+        };
 
         # The /a or /aa modifiers can be asserted in the scope of this
         # element even if they are not asserted globally.
@@ -182,22 +204,46 @@ sub violates {
 # some sort, and is therefore something we might want to forbid.
 sub _is_char_class_numeric {
     my ( $elem ) = @_;
-    foreach my $kid ( $elem->schildren() ) {
-        $kid->isa( 'PPIx::Regexp::Token::CharClass' )
-            and $NUMERIC_CHARACTER_CLASS{$kid->content()}
-            and next;
-        my $content = $kid->content();
-        $kid->isa( 'PPIx::Regexp::Token::Literal' )
-            and $content =~ m/ \d /smx  # SIC
-            and next;
-        $kid->isa( 'PPIx::Regexp::Node::Range' )
-            and $content =~ m/ \A \d - \d \z /smx   # SIC
-            and next;
 
-        # At this point, the current child, and therefore the entire
-        # bracketed character class, MUST represent something other than
-        # just a number.
-        return $FALSE;
+    # If the class is negated
+    if ( $elem->negated() ) {
+
+        # We look through the children for negated numeric character
+        # classes and negated exclusions from ASCII. If we find numeric
+        # but not ASCII we return true; otherwise false.
+        my $ascii = my $numeric = $FALSE;
+        foreach my $kid ( $elem->schildren() ) {
+            $kid->isa( 'PPIx::Regexp::Token::CharClass' )
+                or next;
+            $numeric ||= $NUMERIC_CHARACTER_CLASS_NEGATED{$kid->content()};
+            $ascii ||= _is_restriction_to_ascii( $kid, 1 );
+        }
+        return $numeric && ! $ascii;
+
+        # At this point, we have NOT restricted ourselves to
+
+    # Otherwise (if the class is not negated)
+    } else {
+
+        # We look through the children for things other than asserted
+        # numeric character classes or things equivalent to them.
+        foreach my $kid ( $elem->schildren() ) {
+            $kid->isa( 'PPIx::Regexp::Token::CharClass' )
+                and $NUMERIC_CHARACTER_CLASS_ASSERTED{$kid->content()}
+                and next;
+            my $content = $kid->content();
+            $kid->isa( 'PPIx::Regexp::Token::Literal' )
+                and $content =~ m/ \d /smx  # SIC
+                and next;
+            $kid->isa( 'PPIx::Regexp::Node::Range' )
+                and $content =~ m/ \A \d - \d \z /smx   # SIC
+                and next;
+
+            # At this point, the current child, and therefore the entire
+            # bracketed character class, MUST represent something other
+            # than just a number.
+            return $FALSE;
+        }
     }
     return $TRUE;
 }
@@ -288,34 +334,69 @@ sub _is_singleton {
 
 #-----------------------------------------------------------------------------
 
-Readonly::Hash my %ASCII_CLASS => hashify( qw<
-    ahex
-    ascii
-    asciihexdigit
-    basiclatin
-    latin
-    latin1
-    latin1sup
-    latin1supplement
-    latinexta
-    latinextadditional
-    latinextb
-    latinextc
-    latinextd
-    latinexte
-    latinextendeda
-    latinextendedadditional
-    latinextendedb
-    latinextendedc
-    latinextendedd
-    latinextendede
-    latn
-    posixalnum
-    posixprint
-    posixword
-    posixxdigit
-    xdigit
-    > );
+{
+    Readonly::Hash my %ASCII_CLASS => hashify( qw<
+        ahex
+        ascii
+        asciihexdigit
+        basiclatin
+        latin
+        latin1
+        latin1sup
+        latin1supplement
+        latinexta
+        latinextadditional
+        latinextb
+        latinextc
+        latinextd
+        latinexte
+        latinextendeda
+        latinextendedadditional
+        latinextendedb
+        latinextendedc
+        latinextendedd
+        latinextendede
+        latn
+        posixalnum
+        posixprint
+        posixword
+        posixxdigit
+        xdigit
+        > );
+
+    # Return a true value if the first argument is an element that
+    # restricts matches to ASCII. A true second argument inverts the
+    # sense, and the return is true if the first argument restricts
+    # matches to non-ASCII.  The second argument is a hack for analyzing
+    # inverted character classes; setting it true is NOT the same as
+    # inverting the return.
+    sub _is_restriction_to_ascii {
+        my ( $elem, $if_negated ) = @_;
+        local $_ = $elem->content();
+        if ( $elem->isa( 'PPIx::Regexp::Token::CharClass::POSIX' ) ) {
+            my $re = $if_negated ? qr< \A \[ : \^ >smx : qr< \A \[ : >smx;
+            s/ $re //smx
+                and s/ : \] \z //smx
+                or return $FALSE;
+        } elsif ( $elem->isa( 'PPIx::Regexp::Token::CharClass::Simple' ) ) {
+            my $re = $if_negated ? qr< P >smx : qr< p >smx;
+            s/ \A \\ $re [{] \s* //smx
+                and s/ \s* [}] \z //smx
+                or return $FALSE;
+            s{ \A (?: is_ |
+            (?: block | blk | script | script_extensions )
+            \s* [:=] \s*) }{}smx;
+            s/ [-_\s]+ //smxg;
+            $_ = lc;
+        } else {
+            return $FALSE;
+        }
+        return $ASCII_CLASS{$_};
+    }
+}
+
+#-----------------------------------------------------------------------------
+
 Readonly::Hash my %INTERSECTION_OPERATOR => hashify( qw< & > );
 
 # Return a true value if the argument is intersected with a character
@@ -334,18 +415,7 @@ sub _is_intersected_with_ascii {
             or next;
         $sib->isa( 'PPIx::Regexp::Token::CharClass' )
             or next;
-        local $_ = $sib->content();
-        if ( $sib->isa( 'PPIx::Regexp::Token::CharClass::POSIX' ) ) {
-            s/ \A \[ : //smx; s/ : \] \z //smx;
-        } elsif ( $sib->isa( 'PPIx::Regexp::Token::CharClass::Simple' ) ) {
-            s/ \A \\p [{] \s* //smxi; s/ \s* [}] \z //smx;
-            s{ \A (?: is_ |
-            (?: block | blk | script | script_extensions )
-            \s* [:=] \s*) }{}smx;
-            s/ [-_\s]+ //smxg;
-            $_ = lc;
-        }
-        return $ASCII_CLASS{$_};
+        return _is_restriction_to_ascii( $sib );
     }
     return $FALSE;
 }
@@ -394,6 +464,21 @@ they are restricted to match only ASCII digits;
 intersected with things like C<[:ascii:]> to exclude non-ASCII digits.
 
 =back
+
+The C<\D> and C<[:^digit:]> classes are accepted except in a negated
+bracketed character class, where they are rejected unless a character
+class that excludes ASCII is also present. The idea here is that
+C<[^\D]> is trivially equivalent to C<\d>, but something like
+C<[^\D\P{ASCII}]> is actually equivalent (after navigating the double
+negative) to C<(?[ \d & \p{ASCII} ])> and therefore acceptable. But the
+caveats under
+L<allow_in_extended_character_class|/allow_in_extended_character_class>
+apply to negated bracketed character classes as well.
+
+It is currently a restriction of this policy that C<\D> and
+C<[:^digit:]> are unconditionally accepted in extended bracketed
+character classes. The excuse for this is the complexity of the analysis
+needed to correctly exclude them.
 
 Because its recommendations run more or less counter to those of core
 policy
