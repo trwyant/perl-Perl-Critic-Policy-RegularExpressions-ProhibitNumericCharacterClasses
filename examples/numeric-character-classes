@@ -6,6 +6,7 @@ use strict;
 use warnings;
 
 use File::Spec;
+use File::Temp;
 use Getopt::Long 2.33;
 use Perl::Critic::Command;
 # The following is superfluous as far as Perl::Critic is concerned, but
@@ -34,6 +35,27 @@ if ( ! exists $opt{profile} ) {
         '.perlcritic-numeric-character-classes' );
     -f $pf
         and $opt{profile} = $pf;
+}
+
+my @temp;
+{
+    my $opt_check = 1;
+    foreach ( @ARGV ) {
+        if ( $_ eq q<--> ) {
+            $opt_check = 0;
+        } else {
+            $opt_check
+                and m/ \A - /smx
+                and next;
+            -e
+                and next;
+            my $fh = File::Temp->new();
+            print { $fh } $_;
+            seek $fh, 0, 0;
+            push @temp, $fh;
+            $_ = $fh->filename();
+        }
+    }
 }
 
 exists $opt{profile}
@@ -92,6 +114,10 @@ C<RegularExpressions::ProhibitNumericCharacterClasses>.
 
 If no arguments are passed, the contents of the F<MANIFEST> are scanned
 -- at least, those which appear to be Perl files.
+
+If an argument is passed which is not a file name, it is assumed to be
+code to critique. It is written to a temporary file, and that file is
+analyzed.
 
 Almost all F<perlcritic> options are simply passed through. However:
 
