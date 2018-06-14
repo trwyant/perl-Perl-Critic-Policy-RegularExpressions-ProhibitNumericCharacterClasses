@@ -138,37 +138,9 @@ sub violates {
         $self->{$ctrl->{parameter}}
             and next;
 
-        # We do{} to make the following a compound statement. That way,
-        # the 'next' refers to the foreach() loop. Without the 'do', the
-        # following is a single-iteration loop, and I would need to
-        # label the foreach() to get the effect I want.
-        do {
-            my $parent;
-            # If we're in a bracketed character class
-            if ( $parent = $char_class->parent()
-                    and $parent->isa(
-                    'PPIx::Regexp::Structure::CharClass' ) ) {
-                # We're OK if it is not equivalent to a numeric class
-                _is_char_class_numeric( $parent )
-                    or next;
-            # Otherwise
-            } else {
-                # We're OK if we're a negated class.
-                $NUMERIC_CHARACTER_CLASS_NEGATED{$content}
-                    and next;
-            }
-        };
-
         # The /a or /aa modifiers can be asserted in the scope of this
         # element even if they are not asserted globally.
         $char_class->modifier_asserted( 'a*' )
-            and next;
-
-        # Extended bracketed character classes need some more analysis
-        _is_in_extended_character_class( $char_class )
-            and $OK_IN_EXTENDED_CHARACTER_CLASS{
-                $self->{_allow_in_extended_character_class}}->(
-                    $char_class )
             and next;
 
         # Allow inside (*script_run:...) if the user wants that
@@ -176,9 +148,36 @@ sub violates {
             and _is_in_script_run( $char_class )
             and next;
 
+        my $ccs;    # Character class structure if any
+
+        # If we are in an extended character class
+        if ( $ccs = _is_in_extended_character_class( $char_class ) ) {
+
+            # Allow if the user's configured check says to do so
+            $OK_IN_EXTENDED_CHARACTER_CLASS{
+                $self->{_allow_in_extended_character_class}}->( $char_class )
+                and next;
+
+        # If we are in a bracketed character class
+        } elsif ( $ccs = _is_in_bracketed_character_class( $char_class ) ) {
+
+            # Allow if it is not equivalent to a numeric class
+            _is_bracketed_char_class_numeric( $ccs )
+                or next;
+
+        # If we are not in any character class structure
+        } else {
+
+            # Allow if we're a negated class.
+            $NUMERIC_CHARACTER_CLASS_NEGATED{$content}
+                and next;
+
+            $ccs = $char_class;
+        }
+
         # Allow singletons if the user wants that
         $self->{_allow_if_singleton}
-            and _is_singleton( $char_class )
+            and _is_singleton( $ccs )
             and next;
 
         # We have exhausted all appeals. Guilty as charged.
@@ -202,7 +201,7 @@ sub violates {
 
 # Return true if a bracketed character class represents only a number of
 # some sort, and is therefore something we might want to forbid.
-sub _is_char_class_numeric {
+sub _is_bracketed_char_class_numeric {
     my ( $elem ) = @_;
 
     # If the class is negated
@@ -220,8 +219,6 @@ sub _is_char_class_numeric {
         }
         return $numeric && ! $ascii;
 
-        # At this point, we have NOT restricted ourselves to
-
     # Otherwise (if the class is not negated)
     } else {
 
@@ -236,7 +233,7 @@ sub _is_char_class_numeric {
                 and $content =~ m/ \d /smx  # SIC
                 and next;
             $kid->isa( 'PPIx::Regexp::Node::Range' )
-                and $content =~ m/ \A \d - \d \z /smx   # SIC
+                and $content =~ m/ (?: \A \d | \d \z ) /smx   # SIC
                 and next;
 
             # At this point, the current child, and therefore the entire
@@ -250,12 +247,25 @@ sub _is_char_class_numeric {
 
 #-----------------------------------------------------------------------------
 
-# Return true if the given element is in an extended character class
+# Return true if the given element is in a bracketed character class.
+# The true return is a reference to the bracketed character class.
+sub _is_in_bracketed_character_class {
+    my ( $elem ) = @_;
+    my $parent = $elem->parent()
+        or return $FALSE;
+    return $parent->isa( 'PPIx::Regexp::Structure::CharClass' ) ?
+        $parent : $FALSE;
+}
+
+#-----------------------------------------------------------------------------
+
+# Return true if the given element is in an extended character class.
+# The true return is a reference to the extended character class.
 sub _is_in_extended_character_class {
     my ( $elem ) = @_;
     while ( 1 ) {
         $elem->isa( 'PPIx::Regexp::Structure::RegexSet' )
-            and return $TRUE;
+            and return $elem;
         $elem = $elem->parent()
             or return $FALSE;
     }
@@ -277,23 +287,15 @@ sub _is_in_script_run {
 
 #-----------------------------------------------------------------------------
 
-# Return true if the given element matches at most one digit
+# Return true if the given element matches at most one digit. We assume
+# the argument matches a digit; what we are really checking is its
+# quantifier (if any), and whether the next significant sibling (if any)
+# matches digits.
 
 Readonly::Hash my %AT_MOST_ONE => hashify( q<?>, q<{0,1}>, q<{1}> );
 
 sub _is_singleton {
     my ( $elem ) = @_;
-
-    # If our element is part of a character class we analyze that.
-    # CAVEAT: if the class has not already been checked, we need to do
-    # that here, essentially re-enabling the commented-out code a couple
-    # lines below.
-    if ( my $parent = $elem->parent() ) {
-        $parent->isa( 'PPIx::Regexp::Structure::CharClass' )
-##          and not _is_char_class_numeric( $parent )
-##          and return $TRUE;
-            and $elem = $parent;
-    }
 
     # Check the next significant sibling if there is one.
     if ( my $next = $elem->snext_sibling() ) {
@@ -314,21 +316,21 @@ sub _is_singleton {
         # If it's another numeric character class, we have at least two
         # in a row. So we flunk.
         $next->isa( 'PPIx::Regexp::Token::CharClass' )
-            and $NUMERIC_CHARACTER_CLASS{$content}
+            and $NUMERIC_CHARACTER_CLASS_ASSERTED{$content}
             and return $FALSE;
 
         # If it's a bracketed character class we need to dig into it a
         # bit. If it contains any of the offending character classes, we
         # flunk.
         $next->isa( 'PPIx::Regexp::Structure::CharClass' )
-            and _is_char_class_numeric( $next )
+            and _is_bracketed_char_class_numeric( $next )
             and return $FALSE;
 
     }
 
-    # If we get here, our argument is a numeric class not followed by
-    # another and either not quantified or quantified to at most one. So
-    # we accept it.
+    # If we get here, our argument is a presumed numeric class not
+    # followed by another numeric class and either not quantified or
+    # quantified to at most one. So we accept it.
     return $TRUE;
 }
 
