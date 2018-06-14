@@ -199,8 +199,9 @@ sub violates {
 
 #-----------------------------------------------------------------------------
 
-# Return true if a bracketed character class represents only a number of
-# some sort, and is therefore something we might want to forbid.
+# Return true if a bracketed character class represents only a
+# possibly-non-ASCII number of some sort, and is therefore something we
+# might want to forbid.
 sub _is_bracketed_char_class_numeric {
     my ( $elem ) = @_;
 
@@ -222,13 +223,19 @@ sub _is_bracketed_char_class_numeric {
     # Otherwise (if the class is not negated)
     } else {
 
+        my $rslt = $FALSE;  # Assume no offending kids
+
         # We look through the children for things other than asserted
         # numeric character classes or things equivalent to them.
         foreach my $kid ( $elem->schildren() ) {
-            $kid->isa( 'PPIx::Regexp::Token::CharClass' )
-                and $NUMERIC_CHARACTER_CLASS_ASSERTED{$kid->content()}
-                and next;
             my $content = $kid->content();
+            $kid->isa( 'PPIx::Regexp::Token::CharClass' )
+                and $NUMERIC_CHARACTER_CLASS_ASSERTED{$content}
+                and $rslt = $TRUE
+                and next;
+
+            # The following do not affect our return one way or another,
+            # since ASCII numbers are acceptable.
             $kid->isa( 'PPIx::Regexp::Token::Literal' )
                 and $content =~ m/ \d /smx  # SIC
                 and next;
@@ -241,6 +248,11 @@ sub _is_bracketed_char_class_numeric {
             # than just a number.
             return $FALSE;
         }
+
+        # Return our findings, which should be true if we found
+        # something like \d without additional items that indicate the
+        # intent to match non-numeric characters, and false otherwise.
+        return $rslt;
     }
     return $TRUE;
 }
