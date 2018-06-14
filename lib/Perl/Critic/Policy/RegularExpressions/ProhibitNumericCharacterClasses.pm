@@ -444,9 +444,9 @@ L<Perl::Critic|Perl::Critic>.
 =head1 DESCRIPTION
 
 This L<Perl::Critic|Perl::Critic> policy is intended for those who are
-concerned with the use of regular expressions to sanitize input before
-conversion to internal form. It addresses the potential problem that
-C<\d> and C<[[:digit:]]> may match more than the usual ASCII digit
+concerned with the use of regular expressions to sanitize numeric input
+before conversion to internal form. It addresses the potential problem
+that C<\d> and C<[[:digit:]]> may match more than the usual ASCII digit
 characters, which are what the usual numeric conversion expects, and
 recommends C<[0-9]> or C<\p{PosixDigit}> instead.
 
@@ -468,10 +468,10 @@ intersected with things like C<[:ascii:]> to exclude non-ASCII digits.
 The C<\D> and C<[:^digit:]> classes are accepted except in a negated
 bracketed character class, where they are rejected unless a character
 class that excludes ASCII is also present. The idea here is that
-C<[^\D]> is trivially equivalent to C<\d>, but something like
-C<[^\D\P{ASCII}]> is actually equivalent (after navigating the double
-negative) to C<(?[ \d & \p{ASCII} ])> and therefore acceptable. But the
-caveats under
+C<[^\D]> is trivially equivalent to C<\d> and should therefore be
+rejected, but something like C<[^\D[:^ascii:]]> is actually equivalent
+(by De Morgan's law) to C<(?[ \d & [:ascii:] ])> and therefore
+acceptable. But the caveats under
 L<allow_in_extended_character_class|/allow_in_extended_character_class>
 apply to negated bracketed character classes as well.
 
@@ -484,7 +484,7 @@ Because its recommendations run more or less counter to those of core
 policy
 L<RegularExpressions::ProhibitEnumeratedClasses|Perl::Critic::Policy::RegularExpressions::ProhibitEnumeratedClasses>,
 the user should consider whether this policy meets the specific needs of
-the code base.
+the code base being critiqued.
 
 If you really have to deal with input conversion of non-ASCII digits,
 see the L<Unicode::UCD|Unicode::UCD> L<num()|Unicode::UCD/num>
