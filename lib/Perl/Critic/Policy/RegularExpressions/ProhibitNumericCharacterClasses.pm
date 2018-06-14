@@ -418,6 +418,8 @@ Readonly::Hash my %INTERSECTION_OPERATOR => hashify( qw< & > );
 # in either order.
 sub _is_intersected_with_ascii {
     my ( $elem ) = @_;
+
+    # Intersection
     foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
         my $sib = $elem->$nav()
             or next;
@@ -431,6 +433,28 @@ sub _is_intersected_with_ascii {
             or next;
         return _is_restriction_to_ascii( $sib );
     }
+
+    # Asymetric difference
+    foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
+        my $sib = $elem->$nav()
+            or next;
+        $sib->isa( 'PPIx::Regexp::Token::Operator' )
+            or next;
+        q<-> eq $sib->content()
+            or next;
+        # If we're backing up, our element is
+        # something - \d
+        # which is acceptable to the policy, so we return true. The need
+        # for this comment seems to say the subroutine is badly named.
+        'sprevious_sibling' eq $nav
+            and return $TRUE;
+        $sib = $sib->$nav()
+            or next;
+        $sib->isa( 'PPIx::Regexp::Token::CharClass' )
+            or next;
+        return _is_restriction_to_ascii( $sib, 1 );
+    }
+
     return $FALSE;
 }
 

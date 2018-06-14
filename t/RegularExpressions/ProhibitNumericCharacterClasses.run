@@ -86,16 +86,19 @@ qr{ (?[ [:digit:] ]) }smx;
 m/ (?[ [:ascii:] & \d ]) /smx;
 qr< (?[ [:digit:] & \p{ASCII} ]) >smx;
 s/ (?[ \d & [:xdigit:] ]) //smx;
+qr< (?[ \d - [:^ascii:] ]) >smx;
+qr< (?[ [:ascii:] - \d ]) >smx;
 
 #-----------------------------------------------------------------------------
 
 ## name Reject \d and [:digit:] in extended character class unless intersected with ASCII
 ## parms { allow_in_extended_character_class => 'safe' }
-## failures 2
+## failures 3
 ## cut
 
 m/ (?[ \d ]) /smx;
 qr< (?[ [:digit:] ]) >smx;
+qr< (?[ \d - [:ascii:] ]) >smx;
 
 #-----------------------------------------------------------------------------
 
