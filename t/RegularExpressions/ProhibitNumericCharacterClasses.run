@@ -83,11 +83,18 @@ qr{ (?[ [:digit:] ]) }smx;
 ## failures 0
 ## cut
 
+qr/ (?[ \D ]) /smx; # Not digits
+qr/ (?[ \d ]) /asmx;    # /a
 m/ (?[ [:ascii:] & \d ]) /smx;
+m/ (?[ [:ascii:] & ! \D ]) /smx;
 qr< (?[ [:digit:] & \p{ASCII} ]) >smx;
+qr< (?[ ! [:^digit:] & \p{ASCII} ]) >smx;
 s/ (?[ \d & [:xdigit:] ]) //smx;
 qr< (?[ \d - [:^ascii:] ]) >smx;
-qr< (?[ [:ascii:] - \d ]) >smx;
+qr< (?[ [:ascii:] - \d ]) >smx; # Not digits
+qr< (?[ [:ascii:] - \D ]) >smx; # ASCII digits
+qr< (?[ ! ( \D + [:^ascii:] ) ]) >smx;
+qr< (?[ ! ( [:^xdigit:] | [:^digit:] ) ]) >smx;
 
 #-----------------------------------------------------------------------------
 

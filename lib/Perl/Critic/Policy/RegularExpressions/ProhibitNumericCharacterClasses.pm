@@ -48,10 +48,19 @@ Readonly::Hash my %NUMERIC_CHARACTER_CLASS_NEGATED => (
     },
 );
 
+# The following is for when we want to test either \d, [:digit:] or \D,
+# [:^digit:] based on a computed inversion indicator
+Readonly::Array my @NUMERIC_CHARACTER_CLASS_TYPE => (
+    \%NUMERIC_CHARACTER_CLASS_ASSERTED,
+    \%NUMERIC_CHARACTER_CLASS_NEGATED,
+);
+
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
     %NUMERIC_CHARACTER_CLASS_ASSERTED,
     %NUMERIC_CHARACTER_CLASS_NEGATED,
 );
+
+Readonly::Scalar my $COMPLEMENT_OPERATOR => q<!>;
 
 # Analyze a potentially-offending character class in an extended
 # bracketed character class. We need a hash entry for each permitted
@@ -411,48 +420,162 @@ sub _is_singleton {
 
 #-----------------------------------------------------------------------------
 
+# Return true if the group the element is in is inverted. The purpose of
+# this is seeing which De Morgan alternative to use, so we explicitly do
+# not check for inversion of the element itself (i.e. '! \d')
+sub _is_element_group_inverted {
+    my ( $elem ) = @_;
+
+    my $inverted = 0;
+    my $e = $elem;
+
+    while ( $e = $e->parent() ) {
+        $e->isa( 'PPIx::Token::Structure::RegexSet' )
+            and last;
+        if ( $e->isa( 'PPIx::Regexp::Structure::CharClass' ) ) {
+            $inverted = 1 - $inverted;
+        }
+        if ( my $sib = $e->sprevious_sibling() ) {
+            $sib->isa( 'PPIx::Regexp::Token::Operator' )
+                and $COMPLEMENT_OPERATOR eq $sib->content()
+                and $inverted = 1 - $inverted;
+        }
+    }
+
+    return $inverted % 2;
+}
+
+#-----------------------------------------------------------------------------
+
+# Return the next infix operator, or nothing if it is not found.
+# The first argument MUST be either 'sprevious_sibling' or
+# 'snext_sibling' depending on the direction of navigation.
+# The second argument is the current element, which MUST be an operand
+# in an extended bracketed character class.
+# This subroutine will return nothing useful if the above is violated,
+# or if called on an element of a not-well-formed expression.
+sub _extended_infix_operator {
+    my ( $nav, $elem ) = @_;
+    my $sib = $elem->$nav()
+        or return;
+    $sib->isa( 'PPIx::Regexp::Token::Operator' )
+        or return;
+    if ( 'sprevious_sibling' eq $nav &&
+        $COMPLEMENT_OPERATOR eq $sib->content() ) {
+        $sib = $sib->$nav()
+            or return;
+        $sib->isa( 'PPIx::Regexp::Token::Operator' )
+            or return;
+    }
+    return $sib;
+}
+
+#-----------------------------------------------------------------------------
+
+# Return the next operand and either 1 if it is inverted or 0 if not --
+# or nothing if it is not found.
+# The first argument MUST be either 'sprevious_sibling' or
+# 'snext_sibling' depending on the direction of navigation.
+# The second argument is the current element, which MUST be an infix
+# operator in an extended bracketed character class.
+# This subroutine will return nothing useful if the above is violated,
+# or if called on an element of a not-well-formed expression.
+sub _extended_infix_operand {
+    my ( $nav, $elem ) = @_;
+    my $sib = $elem->$nav()
+        or return;
+    my $inverted = 0;
+    if ( 'sprevious_sibling' eq $nav ) {
+        if ( my $o = $sib->$nav() ) {
+            $o->isa( 'PPIx::Regexp::Token::Operator' )
+                and $COMPLEMENT_OPERATOR eq $o->content()
+                and $inverted = 1;
+        }
+    } else {
+        if ( $sib->isa( 'PPIx::Regexp::Token::Operator' ) &&
+            $COMPLEMENT_OPERATOR eq $sib->content() ) {
+            $sib = $sib->$nav()
+                or return;
+            $inverted = 1;
+        }
+    }
+    return wantarray ? ( $sib, $inverted ) : $sib;
+}
+
+#-----------------------------------------------------------------------------
+
 Readonly::Hash my %INTERSECTION_OPERATOR => hashify( qw< & > );
+Readonly::Hash my %UNION_OPERATOR => hashify( qw< | + > );
 
 # Return a true value if the argument is intersected with a character
 # class that is known to restrict it to ASCII. The operations can occur
 # in either order.
-sub _is_intersected_with_ascii {
+# The actual meaning of a true value is that the element is not a
+# (possible) failure, so the subroutine is probably not well-named.
+
+# TODO try to consolidate.
+sub _is_intersected_with_ascii {    ## no critic (ProhibitExcessComplexity)
     my ( $elem ) = @_;
 
-    # Intersection
-    foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
-        my $sib = $elem->$nav()
-            or next;
-        $sib->isa( 'PPIx::Regexp::Token::Operator' )
-            or next;
-        $INTERSECTION_OPERATOR{ $sib->content() }
-            or next;
-        $sib = $sib->$nav()
-            or next;
-        $sib->isa( 'PPIx::Regexp::Token::CharClass' )
-            or next;
-        return _is_restriction_to_ascii( $sib );
-    }
+    my $elem_inverted = do {
+        my $sib;
+        ( $sib = $elem->sprevious_sibling() ) &&
+            $sib->isa( 'PPIx::Regexp::Token::Operator' ) &&
+            $COMPLEMENT_OPERATOR eq $sib->content() || 0;
+    };
 
-    # Asymetric difference
-    foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
-        my $sib = $elem->$nav()
-            or next;
-        $sib->isa( 'PPIx::Regexp::Token::Operator' )
-            or next;
-        q<-> eq $sib->content()
-            or next;
-        # If we're backing up, our element is
-        # something - \d
-        # which is acceptable to the policy, so we return true. The need
-        # for this comment seems to say the subroutine is badly named.
-        'sprevious_sibling' eq $nav
-            and return $TRUE;
-        $sib = $sib->$nav()
-            or next;
-        $sib->isa( 'PPIx::Regexp::Token::CharClass' )
-            or next;
-        return _is_restriction_to_ascii( $sib, 1 );
+    if ( _is_element_group_inverted( $elem ) ) {
+        $NUMERIC_CHARACTER_CLASS_TYPE[ 1 - $elem_inverted ]{ $elem->content() }
+            or return $TRUE;
+
+        # Union
+        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
+            my $operator = _extended_infix_operator( $nav, $elem )
+                or next;
+            $UNION_OPERATOR{ $operator->content() }
+                or next;
+            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
+                or next;
+            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
+                and return _is_restriction_to_ascii( $operand, 1 - $inv );
+            # TODO we might have a parenthesized expression
+        }
+
+    } else {
+        $NUMERIC_CHARACTER_CLASS_TYPE[ $elem_inverted ]{ $elem->content() }
+            or return $TRUE;
+
+        # Intersection
+        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
+            my $operator = _extended_infix_operator( $nav, $elem )
+                or next;
+            $INTERSECTION_OPERATOR{ $operator->content() }
+                or next;
+            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
+                or next;
+            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
+                and return _is_restriction_to_ascii( $operand, $inv );
+            # TODO we might have a parenthesized expression
+        }
+
+        # Asymetric difference
+        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
+            my $operator = _extended_infix_operator( $nav, $elem )
+                or next;
+            q<-> eq $operator->content()
+                or next;
+            # If we're backing up, our element is
+            # something - \d
+            # which is acceptable to the policy, so we return true. The need
+            # for this comment seems to say the subroutine is badly named.
+            'sprevious_sibling' eq $nav
+                and return $TRUE;
+            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
+                or next;
+            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
+                and return _is_restriction_to_ascii( $operand, 1 - $inv );
+            # TODO we might have a parenthesized expression
+        }
     }
 
     return $FALSE;
