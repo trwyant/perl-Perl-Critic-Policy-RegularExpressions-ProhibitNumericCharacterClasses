@@ -48,13 +48,6 @@ Readonly::Hash my %NUMERIC_CHARACTER_CLASS_NEGATED => (
     },
 );
 
-# The following is for when we want to test either \d, [:digit:] or \D,
-# [:^digit:] based on a computed inversion indicator
-Readonly::Array my @NUMERIC_CHARACTER_CLASS_TYPE => (
-    \%NUMERIC_CHARACTER_CLASS_ASSERTED,
-    \%NUMERIC_CHARACTER_CLASS_NEGATED,
-);
-
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS => (
     %NUMERIC_CHARACTER_CLASS_ASSERTED,
     %NUMERIC_CHARACTER_CLASS_NEGATED,
@@ -70,7 +63,7 @@ Readonly::Scalar my $COMPLEMENT_OPERATOR => q<!>;
 # reject it (i.e. make it a violation).
 Readonly::Hash my %OK_IN_EXTENDED_CHARACTER_CLASS => (
     always  => sub { return $TRUE },
-    safe    => \&_is_intersected_with_ascii,
+    safe    => \&_is_acceptable_in_extended_character_class,
     never   => sub { return $FALSE },
 );
 
@@ -414,7 +407,7 @@ sub _is_singleton {
         } else {
             return $FALSE;
         }
-        return $ASCII_CLASS{$_};
+        return $ASCII_CLASS{$_} || $FALSE;
     }
 }
 
@@ -447,138 +440,134 @@ sub _is_element_group_inverted {
 
 #-----------------------------------------------------------------------------
 
-# Return the next infix operator, or nothing if it is not found.
-# The first argument MUST be either 'sprevious_sibling' or
-# 'snext_sibling' depending on the direction of navigation.
-# The second argument is the current element, which MUST be an operand
-# in an extended bracketed character class.
-# This subroutine will return nothing useful if the above is violated,
-# or if called on an element of a not-well-formed expression.
-sub _extended_infix_operator {
-    my ( $nav, $elem ) = @_;
-    my $sib = $elem->$nav()
-        or return;
-    $sib->isa( 'PPIx::Regexp::Token::Operator' )
-        or return;
-    if ( 'sprevious_sibling' eq $nav &&
-        $COMPLEMENT_OPERATOR eq $sib->content() ) {
-        $sib = $sib->$nav()
-            or return;
-        $sib->isa( 'PPIx::Regexp::Token::Operator' )
-            or return;
-    }
-    return $sib;
-}
-
-#-----------------------------------------------------------------------------
-
-# Return the next operand and either 1 if it is inverted or 0 if not --
-# or nothing if it is not found.
-# The first argument MUST be either 'sprevious_sibling' or
-# 'snext_sibling' depending on the direction of navigation.
-# The second argument is the current element, which MUST be an infix
-# operator in an extended bracketed character class.
-# This subroutine will return nothing useful if the above is violated,
-# or if called on an element of a not-well-formed expression.
-sub _extended_infix_operand {
-    my ( $nav, $elem ) = @_;
-    my $sib = $elem->$nav()
-        or return;
-    my $inverted = 0;
-    if ( 'sprevious_sibling' eq $nav ) {
-        if ( my $o = $sib->$nav() ) {
-            $o->isa( 'PPIx::Regexp::Token::Operator' )
-                and $COMPLEMENT_OPERATOR eq $o->content()
-                and $inverted = 1;
-        }
-    } else {
-        if ( $sib->isa( 'PPIx::Regexp::Token::Operator' ) &&
-            $COMPLEMENT_OPERATOR eq $sib->content() ) {
-            $sib = $sib->$nav()
-                or return;
-            $inverted = 1;
-        }
-    }
-    return wantarray ? ( $sib, $inverted ) : $sib;
-}
-
-#-----------------------------------------------------------------------------
-
-Readonly::Hash my %INTERSECTION_OPERATOR => hashify( qw< & > );
-Readonly::Hash my %UNION_OPERATOR => hashify( qw< | + > );
-
-# Return a true value if the argument is intersected with a character
-# class that is known to restrict it to ASCII. The operations can occur
-# in either order.
-# The actual meaning of a true value is that the element is not a
-# (possible) failure, so the subroutine is probably not well-named.
-
-# TODO try to consolidate.
-sub _is_intersected_with_ascii {    ## no critic (ProhibitExcessComplexity)
+# TODO this block of code is work on the replacement for
+# _is_intersected_with_ascii()
+#
+# If called in scalar context, returns 1 if the operand is complemented,
+# 0 if not. Multiple complements are taken into account.
+# If called in list context, returns the complement indicator and the
+# element before the first complement operator, if any.
+sub _extended_operand_complemented {
     my ( $elem ) = @_;
+    my $sib = $elem;
+    my $complemented = 0;
+    while ( $sib = $sib->sprevious_sibling() ) {
+        $sib->isa( 'PPIx::Regexp::Token::Operator' )
+            and $COMPLEMENT_OPERATOR eq $sib->content()
+            or last;
+        $complemented++;
+    }
+    return wantarray ? ( $complemented % 2, $sib ) : $complemented % 2;
+}
 
-    my $elem_inverted = do {
-        my $sib;
-        ( $sib = $elem->sprevious_sibling() ) &&
-            $sib->isa( 'PPIx::Regexp::Token::Operator' ) &&
-            $COMPLEMENT_OPERATOR eq $sib->content() || 0;
-    };
+Readonly::Hash my %EXTENDED_INFIX_FORWARD => (
+    q<intersection> => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # Accept if \D
+        return _is_restriction_to_ascii( $operand, $complemented );
+    },
+    q<union>       => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        return $TRUE;
+        # TODO the assumption of the above is that either we got \D or
+        # we are unioning something which is not equivalent to \d.
+    },
+    q<!union>       => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # Accept if \D
+        return _is_restriction_to_ascii( $operand, 1 - $complemented );
+    },
+    q<subtraction>  => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # Accept if \D
+        return _is_restriction_to_ascii( $operand, 1 - $complemented );
+    },
+);
 
-    if ( _is_element_group_inverted( $elem ) ) {
-        $NUMERIC_CHARACTER_CLASS_TYPE[ 1 - $elem_inverted ]{ $elem->content() }
-            or return $TRUE;
+sub _extended_infix_forward {
+    my ( $elem, $expr_compl ) = @_;
+    my $digit = ( _extended_operand_complemented( $elem ) +
+        ( $NUMERIC_CHARACTER_CLASS_NEGATED{ $elem->content() } ? 1 : 0 ) ) % 2;
 
-        # Union
-        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
-            my $operator = _extended_infix_operator( $nav, $elem )
-                or next;
-            $UNION_OPERATOR{ $operator->content() }
-                or next;
-            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
-                or next;
-            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
-                and return _is_restriction_to_ascii( $operand, 1 - $inv );
-            # TODO we might have a parenthesized expression
-        }
+    my $operator = $elem->snext_sibling()
+        or return;
+    $operator->isa( 'PPIx::Regexp::Token::Operator' )
+        or return;
 
-    } else {
-        $NUMERIC_CHARACTER_CLASS_TYPE[ $elem_inverted ]{ $elem->content() }
-            or return $TRUE;
-
-        # Intersection
-        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
-            my $operator = _extended_infix_operator( $nav, $elem )
-                or next;
-            $INTERSECTION_OPERATOR{ $operator->content() }
-                or next;
-            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
-                or next;
-            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
-                and return _is_restriction_to_ascii( $operand, $inv );
-            # TODO we might have a parenthesized expression
-        }
-
-        # Asymetric difference
-        foreach my $nav ( qw{ sprevious_sibling snext_sibling } ) {
-            my $operator = _extended_infix_operator( $nav, $elem )
-                or next;
-            q<-> eq $operator->content()
-                or next;
-            # If we're backing up, our element is
-            # something - \d
-            # which is acceptable to the policy, so we return true. The need
-            # for this comment seems to say the subroutine is badly named.
-            'sprevious_sibling' eq $nav
-                and return $TRUE;
-            my ( $operand, $inv ) = _extended_infix_operand( $nav, $operator )
-                or next;
-            $operand->isa( 'PPIx::Regexp::Token::CharClass' )
-                and return _is_restriction_to_ascii( $operand, 1 - $inv );
-            # TODO we might have a parenthesized expression
-        }
+    my $operand = $operator;
+    my $complemented = $expr_compl;
+    while ( 1 ) {
+        $operand = $operand->snext_sibling()
+            or return;
+        $operand->isa( 'PPIx::Regexp::Token::Operator' )
+            or last;
+        $COMPLEMENT_OPERATOR eq $operand->content()
+            and $complemented++;
     }
 
-    return $FALSE;
+    my $key = [ $EMPTY, $COMPLEMENT_OPERATOR ]->[ $expr_compl ] .
+        $operator->operation();
+
+    my $code = $EXTENDED_INFIX_FORWARD{$key}
+        or return;
+    return $code->( $digit, $operand, $complemented % 2 );
+}
+
+Readonly::Hash my %EXTENDED_INFIX_BACKWARD => (
+    q<intersection> => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # \D
+        return _is_restriction_to_ascii( $operand, $complemented );
+    },
+    q<union>       => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        return $TRUE;
+        # TODO the assumption of the above is that either we got \D or
+        # we are unioning something which is not equivalent to \d.
+    },
+    q<!union>       => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # \D
+        return _is_restriction_to_ascii( $operand, 1 - $complemented );
+    },
+    q<subtraction>  => sub {
+        my ( $digit, $operand, $complemented ) = @_;
+        $digit and return $TRUE;    # \D
+        return _is_restriction_to_ascii( $operand, $complemented );
+    },
+);
+
+sub _extended_infix_backward {
+    my ( $elem, $expr_compl ) = @_;
+    my ( $complemented, $operator ) = _extended_operand_complemented( $elem );
+    $operator
+        or return;
+    my $digit = ( $complemented +
+        ( $NUMERIC_CHARACTER_CLASS_NEGATED{ $elem->content() } ? 1 : 0 ) ) % 2;
+    $operator->isa( 'PPIx::Regexp::Token::Operator' )
+        or return;
+    my $operand = $operator->sprevious_sibling();
+    $complemented = _extended_operand_complemented( $operand );
+    my $key = [ $EMPTY, $COMPLEMENT_OPERATOR ]->[ $expr_compl ] .
+        $operator->operation();
+    my $code = $EXTENDED_INFIX_BACKWARD{$key}
+        or return;
+    return $code->( $digit, $operand, $complemented % 2 );
+}
+
+sub _is_acceptable_in_extended_character_class {
+    my ( $elem ) = @_;
+    my $expr_compl = _is_element_group_inverted( $elem );
+    foreach my $code ( \&_extended_infix_forward, \&_extended_infix_backward ) {
+        my $rslt = $code->( $elem, $expr_compl );
+        defined $rslt
+            and return $rslt;
+    }
+
+    $expr_compl += _extended_operand_complemented( $elem );
+    $expr_compl %= 2;
+
+    return [ $FALSE, $TRUE ]->[ $NUMERIC_CHARACTER_CLASS_NEGATED{ $elem->content() } ? 1 - $expr_compl : $expr_compl ];
 }
 
 #-----------------------------------------------------------------------------

@@ -95,16 +95,24 @@ qr< (?[ [:ascii:] - \d ]) >smx; # Not digits
 qr< (?[ [:ascii:] - \D ]) >smx; # ASCII digits
 qr< (?[ ! ( \D + [:^ascii:] ) ]) >smx;
 qr< (?[ ! ( [:^xdigit:] | [:^digit:] ) ]) >smx;
+qr< (?[ \d | \w ]) >smx;
+qr< (?[ \w | \d ]) >smx;
+m/ (?[ \d | \D ]) /smx;
+m/ (?[ \D | \d ]) /smx;
 
 #-----------------------------------------------------------------------------
 
 ## name Reject \d and [:digit:] in extended character class unless intersected with ASCII
 ## parms { allow_in_extended_character_class => 'safe' }
-## failures 3
+## failures 7
 ## cut
 
 m/ (?[ \d ]) /smx;
+m/ (?[ \d & \d ]) /smx;     # 2 failures -- one on each '\d'
+# m/ (?[ \d | \d ]) /smx; # TODO this should fail
 qr< (?[ [:digit:] ]) >smx;
+m/ (?[ ! \D ]) /smx;
+m/ (?[ ! ( \D ) ]) /smx;
 qr< (?[ \d - [:ascii:] ]) >smx;
 
 #-----------------------------------------------------------------------------
