@@ -395,9 +395,12 @@ sub _is_singleton {
                 and s/ : \] \z //smx
                 or return $FALSE;
         } elsif ( $elem->isa( 'PPIx::Regexp::Token::CharClass::Simple' ) ) {
-            my $re = $if_negated ? qr< P >smx : qr< p >smx;
-            s/ \A \\ $re [{] \s* //smx
-                and s/ \s* [}] \z //smx
+            ## no critic (ProhibitEscapedMetacharacters)
+            my $re = $if_negated ?
+                qr< P \{ \s* (?! \^ ) | p \{ \s* \^ \s* >smx :
+                qr< p \{ \s* (?! \^ ) | P \{ \s* \^ \s* >smx;
+            s/ \A \\ $re //smx
+                and s/ \s* \} \z //smx
                 or return $FALSE;
             s{ \A (?: is_ |
             (?: block | blk | script | script_extensions )
@@ -687,7 +690,7 @@ If you wish to tighten things up here, you can add a block like this to
 your F<.perlcriticrc> file:
 
     [RegularExpressions::ProhibitNumericCharacterClasses]
-    allow_in_extended_character_class = 'safe'
+    allow_in_extended_character_class = safe
 
 The permitted values are:
 
