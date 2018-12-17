@@ -443,9 +443,6 @@ sub _is_element_group_inverted {
 
 #-----------------------------------------------------------------------------
 
-# TODO this block of code is work on the replacement for
-# _is_intersected_with_ascii()
-#
 # If called in scalar context, returns 1 if the operand is complemented,
 # 0 if not. Multiple complements are taken into account.
 # If called in list context, returns the complement indicator and the
