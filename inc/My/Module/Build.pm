@@ -10,7 +10,7 @@ use Carp;
 use Module::Build;
 our @ISA = qw{ Module::Build };
 
-our $VERSION = '0.000_005';
+our $VERSION = '0.000_006';
 
 sub ACTION_authortest {
     my ( $self, @args ) = @_;

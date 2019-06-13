@@ -1,3 +1,10 @@
+0.000_006	2019-06-13	T. R. Wyant
+    In examples/devanagari.t bring IsPosixDigit back to 5.8
+
+    Update copyright to 2019.
+
+    Fix broken POD links.
+
 0.000_005	2018-06-28	T. R. Wyant
     Recognize \P{^...} as being same as \p{...} in extended character
     class analysis. This is not relevant elsewhere because of the
