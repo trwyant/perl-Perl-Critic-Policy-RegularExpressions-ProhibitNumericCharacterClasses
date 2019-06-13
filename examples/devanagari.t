@@ -7,6 +7,7 @@ use warnings;
 
 use English qw{ -no_match_vars };
 use Readonly;
+use Test::More 0.88;        # Because of done_testing();
 
 BEGIN {
     local $EVAL_ERROR = undef;
@@ -17,12 +18,18 @@ BEGIN {
     eval {  ## no critic (RequireCheckingReturnValueOfEval)
         require experimental;
         experimental->import( 'regex_sets' );
-    }
+    };
+
+    # We can bring \p{IsPosixDigit} back to 5.8 by adding it as a custom
+    # property
+
+    eval { '1' =~ m/\p{IsPosixDigit}/smx }
+        or $] lt '5.008'    # The following requires at least 5.8
+        or eval 'sub IsPosixDigit { "30 39\n" }'        ## no critic (ProhibitStringyEval,RequireInterpolationOfMetachars)
+        or plan skip_all => 'Unable to create sub IsPosixDigit()';
 }
 
 use charnames qw{ :full };
-
-use Test::More 0.88;        # Because of done_testing();
 
 our $VERSION = '0.000_002';
 
@@ -30,8 +37,16 @@ Readonly::Scalar my $CODE_REF   => ref sub {};
 Readonly::Scalar my $SCALAR_REF => ref \0;
 
 note <<'EOD';
-Demonstrate the capability of various character classes to match
+
+Demonstrate the ability of various character classes to match
 "\N{DEVANAGARI DIGIT ONE}"
+
+EOD
+
+__PACKAGE__->can( 'IsPosixDigit' )
+    and note <<"EOD";
+We defined our own IsPosixDigit(), since Perl $] does not have it.
+
 EOD
 
 my $text = "\N{DEVANAGARI DIGIT ONE}";
@@ -88,11 +103,8 @@ foreach my $class (
     } elsif ( $SCALAR_REF eq ref $class ) {
         note ${ $class };
     } elsif (
-        # We're getting the Regexp object by stringy eval because expect
-        # to run under versions of Perl too old to compile them.
-        my $re = eval "qr{$class}"  ## no critic (ProhibitStringyEval)
+        defined( my $got = eval { $text =~ m/$class/smx } )
     ) {
-        my $got = ( $text =~ $re );
         if ( $want ) {
             ok $got, qq<"\\N{DEVANAGARI DIGIT ONE} matches $class>;
         } else {
@@ -100,7 +112,7 @@ foreach my $class (
         }
     } else {
         SKIP: {
-            skip "Could not compile $class", 1;
+            skip "Could not find $class", 1;
         }
     }
 }
