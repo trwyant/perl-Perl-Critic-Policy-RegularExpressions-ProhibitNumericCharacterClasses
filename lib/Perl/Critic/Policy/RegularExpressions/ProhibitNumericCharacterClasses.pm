@@ -29,22 +29,22 @@ Readonly::Scalar my $EXPL =>
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS_ASSERTED => (
     q<\\d>          => {
         parameter   => '_allow_back_slash_dee',
-        replacement => '[0-9] or \\p{PosixDigit}',
+        replacement => '[0-9] or \\p{IsPosixDigit}',
     },
     q<[:digit:]>    => {
         parameter   => '_allow_posix_digit',
-        replacement => '[0-9] or \\p{PosixDigit}',
+        replacement => '[0-9] or \\p{IsPosixDigit}',
     },
 );
 
 Readonly::Hash my %NUMERIC_CHARACTER_CLASS_NEGATED => (
     q<\\D>          => {
         parameter   => '_allow_back_slash_dee',
-        replacement => '[^0-9] or \\P{PosixDigit}',
+        replacement => '[^0-9] or \\P{IsPosixDigit}',
     },
     q<[:^digit:]>    => {
         parameter   => '_allow_posix_digit',
-        replacement => '[^0-9] or \\P{PosixDigit}',
+        replacement => '[^0-9] or \\P{IsPosixDigit}',
     },
 );
 
@@ -598,7 +598,14 @@ concerned with the use of regular expressions to sanitize numeric input
 before conversion to internal form. It addresses the potential problem
 that C<\d> and C<[[:digit:]]> may match more than the usual ASCII digit
 characters, which are what the usual numeric conversion expects, and
-recommends C<[0-9]> or C<\p{PosixDigit}> instead.
+recommends C<[0-9]> or C<\p{IsPosixDigit}> instead. The latter requires
+Perl 5.10, but Perl 5.8 could get the same effect with a custom
+character class:
+
+ BEGIN {
+     eval { '1' =~ qr<\p{IsPosixDigit}> } or
+     eval 'sub IsPosixDigit { return "30 39\n" }';
+ }
 
 In the default configuration, the C<\d> and C<[[:digit:]]> classes are
 accepted under the following conditions:
@@ -637,7 +644,7 @@ the user should consider whether this policy meets the specific needs of
 the code base being critiqued.
 
 If you really have to deal with input conversion of non-ASCII digits,
-see the L<Unicode::UCD|Unicode::UCD> L<num()|Unicode::UCD/num>
+see the L<Unicode::UCD|Unicode::UCD> L<num()|Unicode::UCD/num()>
 subroutine. You should be aware that even this will not convert
 everything matched by C</\d+/>; it requires all the digits to be in the
 same script, and has other restrictions as well.
