@@ -612,13 +612,11 @@ accepted under the following conditions:
 
 =over
 
-=item The C</a> or C</aa> modifier is in effect, because in that case
-they are restricted to match only ASCII digits;
+=item * The C</a> or C</aa> modifier is in effect, because in that case they are restricted to match only ASCII digits;
 
-=item In bracketed character classes that also specify non-digits;
+=item * In bracketed character classes that also specify non-digits, because in this case the intent is probably B<not> to sanitize input for numeric conversion;
 
-=item In extended bracketed character classes, because there they can be
-intersected with things like C<[:ascii:]> to exclude non-ASCII digits.
+=item * In extended bracketed character classes, because there they can be intersected with things like C<[:ascii:]> to exclude non-ASCII digits.
 
 =back
 
@@ -723,6 +721,7 @@ any:
     p{ASCII}
     p{ASCII_Hex_Digit}
     p{Basic_Latin}
+    p{Latn}
     p{Latin}
     p{Latin_1}
     p{Latin_1_Sup}
@@ -739,7 +738,6 @@ any:
     p{Latin_Extended_C}
     p{Latin_Extended_D}
     p{Latin_Extended_E}
-    p{Latn}
     p{Posix_Alnum}
     p{Posix_Print}
     p{Posix_Word}
@@ -765,7 +763,9 @@ file:
     allow_if_single_script = 1
 
 Note that the script_run construction was actually introduced in 5.27.8,
-but in that release it was spelled C<(+script_run:...)>.
+but in that release it was spelled C<(+script_run:...)>. Both forms are
+accepted because L<PPIx::Regexp|PPIx::Regexp> recognizes both as
+specifying a script run.
 
 =head2 allow_if_singleton
 
