@@ -14,7 +14,7 @@ use Perl::Critic::Command;
 use Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses;
 use Pod::Usage;
 
-our $VERSION = '0.000_006';
+our $VERSION = '0.000_007';
 
 my %opt;
 

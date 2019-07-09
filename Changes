@@ -1,3 +1,10 @@
+0.000_007	2019-07-09	T. R. Wyant
+    Clean up and clarify POD. This actually involved some changes in
+    ProhibitNumericCharacterClasses.run to ensure that what I said in
+    the POD was actually true, and remained so.
+
+    Test POD links.
+
 0.000_006	2019-06-13	T. R. Wyant
     In examples/devanagari.t bring IsPosixDigit back to 5.8
 
