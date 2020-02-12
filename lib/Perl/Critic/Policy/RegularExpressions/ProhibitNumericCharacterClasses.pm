@@ -306,7 +306,9 @@ sub _is_in_script_run {
 # quantifier (if any), and whether the next significant sibling (if any)
 # matches digits.
 
-Readonly::Hash my %AT_MOST_ONE => hashify( q<?>, q<{0,1}>, q<{1}> );
+no warnings qw{ qw };   ## no critic (ProhibitNoWarnings)
+Readonly::Hash my %AT_MOST_ONE => hashify( qw{ ? {0} {0,0} {0,1} {1} {1,1} } );
+use warnings qw{ qw };
 
 sub _is_singleton {
     my ( $elem ) = @_;
@@ -324,7 +326,7 @@ sub _is_singleton {
             # If there is nothing after it, we're good.
             $next = $next->snext_sibling()
                 or return $TRUE;
-            $content = $next->comtemt();
+            $content = $next->content();
         }
 
         # If it's another numeric character class, we have at least two
