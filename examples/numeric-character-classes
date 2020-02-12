@@ -5,66 +5,88 @@ use 5.006001;
 use strict;
 use warnings;
 
-use File::Spec;
-use File::Temp;
-use Getopt::Long 2.33;
-use Perl::Critic::Command;
+use English qw{ -no_match_vars };
+use Getopt::Long 2.33 qw{ :config auto_version };
+use Perl::Critic;
+use Perl::Critic::Utils qw{ all_perl_files };
+use Perl::Critic::Violation;
 # The following is superfluous as far as Perl::Critic is concerned, but
 # handy if we want to run the debugger.
 use Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses;
 use Pod::Usage;
+use Readonly;
+use Text::Abbrev qw{ abbrev };
 
 our $VERSION = '0.000_007';
 
-my %opt;
+Readonly::Scalar my $DEFAULT_SINGLE_FILE_FORMAT => 4;
+Readonly::Scalar my $DEFAULT_MULTI_FILE_FORMAT  => 5;
 
-Getopt::Long::Configure( qw{ pass_through } );
+my %opt = (
+    allow_in_extended_character_class   => 'always',
+);
+
+my %valid_extended = abbrev( qw{ always safe never } );
 
 GetOptions( \%opt,
-    qw{ single-policy=s },
-    'profile=s' => sub { $opt{profile} = $_[1] },
-    'noprofile' => sub { $opt{profile} = undef },
+    qw{
+        allow_back_slash_dee|dee!
+        allow_posix_digit|posix-digit!
+        allow_if_single_script|single-script!
+        allow_if_singleton|singleton!
+    },
+    'allow_in_extended_character_class|extended-character-class=s' => sub {
+        $opt{$_[0]} = $valid_extended{$_[1]}
+            or die "Invalid -extended-character-class value '$_[1]'\n";
+        return;
+    },
+    'format=s'  => \( my $format ),
+    'verbose!'  => \( my $verbose ),
     help => sub { pod2usage( { -verbose => 2 } ) },
 ) or pod2usage( { -verbose => 0 } );
 
-$opt{'single-policy'}
-    and warn "--single-policy ignored\n";
-
-if ( ! exists $opt{profile} ) {
-    my $pf = File::Spec->catfile( $ENV{HOME},
-        '.perlcritic-numeric-character-classes' );
-    -f $pf
-        and $opt{profile} = $pf;
+if ( ! @ARGV ) {
+    -e 'MANIFEST'
+        or die "No arguments specified and no MANIFEST found\n";
+    require ExtUtils::Manifest;
+    my $manifest = ExtUtils::Manifest::maniread();
+    @ARGV = sort all_perl_files( keys %{ $manifest } )  ## no critic (RequireLocalizedPunctuationVars)
 }
 
-my @temp;
-{
-    my $opt_check = 1;
-    foreach ( @ARGV ) {
-        if ( $_ eq q<--> ) {
-            $opt_check = 0;
-        } else {
-            $opt_check
-                and m/ \A - /smx
-                and next;
-            -e
-                and next;
-            my $fh = File::Temp->new();
-            print { $fh } $_;
-            seek $fh, 0, 0;
-            push @temp, $fh;
-            $_ = $fh->filename();
+my $critic = Perl::Critic->new(
+    -profile    => 'NONE',
+);
+
+$critic->add_policy(
+    -policy => 'RegularExpressions::ProhibitNumericCharacterClasses',
+    -config => \%opt,
+);
+
+Perl::Critic::Violation::set_format(
+    defined $format ? $format :
+    ( @ARGV > 1 || -d $ARGV[0] ) ?
+        $DEFAULT_MULTI_FILE_FORMAT :
+        $DEFAULT_SINGLE_FILE_FORMAT
+);
+
+foreach my $fn ( @ARGV ) {
+
+    foreach my $pf ( -e $fn ? all_perl_files( $fn ) : \$fn ) {
+        my @violations = Perl::Critic::Violation::sort_by_location(
+            $critic->critique( $pf ) );
+
+        if ( @violations ) {
+            foreach ( @violations ) {
+                print;
+            }
+        } elsif ( $verbose ) {
+            local $_ = Perl::Critic::Violation::get_format();
+            local $OUTPUT_RECORD_SEPARATOR = "\n";
+            print m/ (?: \A | (?<= [^%] ) ) (?: %% )* %f /smx ?
+                "$pf source OK" : 'source OK';
         }
     }
 }
-
-exists $opt{profile}
-    and splice @ARGV, 0, 0, defined $opt{profile} ?
-        ( '--profile', $opt{profile} ) :
-        ( '--noprofile' );
-splice @ARGV, 0, 0, qw{ --single ProhibitNumericCharacterClasses };
-
-Perl::Critic::Command::run();
 
 __END__
 
@@ -81,27 +103,60 @@ numeric-character-classes - Find numeric character classes.
 
 =head1 OPTIONS
 
-The following options are parsed by this script. All options not
-specifically mentioned below are passed to Perl-Critic.
+The following options are supported. They can be specified with either
+single or double leading dashes. Boolean options can be negated by
+prefixing either C<'no'> or C<'no-'> to the name of the option. Option
+names can be abbreviated, as long as the abbreviation is unique.
+
+=head2 -dee
+
+If this Boolean option is asserted, C<\d> is allowed.
+
+The default is C<-no-dee>.
+
+=head2 -extended-character-class
+
+ -extended-character-class=safe
+
+This option specifies how to analyze extended character classes.
+Possible values are C<'always'>, C<'safe'>, and C<'never'>, or their
+unique abbreviations.
+
+The default is C<'always'>.
 
 =head2 -help
 
 This option displays the documentation for this script. The script then
 exits.
 
-=head2 -noprofile
+=head2 -posix-digit
 
-This option specifies that no profile be used. It specifically prevents
-the use of the default profile.
+If this Boolean option is asserted, C<[[:digit:]]> is allowed.
 
-=head2 -profile profile_file
+The default is C<-no-posix-digit>.
 
-This option specifies the profile file to use.
+=head2 -single-script
 
-=head2 -single-policy policy_name
+If this Boolean option is asserted, C<\d> and C<[[:digit:]]> are allowed
+if they are restricted to a single script -- that is, if they are inside
+a C<(*script_run:...)>.
 
-This option exists simply to intercept any attempt to specify a policy
-other than C<RegularExpressions::ProhibitNumericCharacterClasses>.
+The default is C<-no-single-script>.
+
+=head2 -singleton
+
+If this Boolean option is asserted, C<\d> and C<[[:digit:]]> are allowed
+if they are quantified to match at most one character.
+
+The default is C<-no-singleton>.
+
+=head2 -verbose
+
+If this Boolean option is asserted, an C<OK> message is displayed for
+files that contain no violations. If not, nothing is displayed for files
+that contain no violations.
+
+The default is C<-no-verbose>.
 
 =head2 -version
 
