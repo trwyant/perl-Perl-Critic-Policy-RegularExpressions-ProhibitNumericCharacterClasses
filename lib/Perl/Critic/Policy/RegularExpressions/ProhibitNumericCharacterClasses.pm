@@ -791,6 +791,12 @@ This logic is controlled by a separate configuration item because the
 analysis involved in the implementation is a bit involved, and I am
 unsure I have covered all the corner cases.
 
+=head1 SUPPORT
+
+Support is by the author. Please file bug reports at
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>,
+or in electronic mail to the author.
+
 =head1 AUTHOR
 
 Thomas R. Wyant, III F<wyant at cpan dot org>

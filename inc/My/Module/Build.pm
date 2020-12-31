@@ -38,7 +38,6 @@ sub ACTION_genclean {
     return;
 }
 
-
 1;
 
 __END__
@@ -87,7 +86,8 @@ L<Module::Build|Module::Build>.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://rt.cpan.org>, or in electronic mail to the author.
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>,
+or in electronic mail to the author.
 
 =head1 AUTHOR
 
