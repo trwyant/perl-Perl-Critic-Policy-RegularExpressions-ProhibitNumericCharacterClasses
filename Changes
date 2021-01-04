@@ -1,3 +1,18 @@
+0.000_008	2021-01-04	T. R. Wyant
+    Add Travis CI testing.
+
+    Use GitHub as bug tracker. R.I.P. rt.cpan.org.
+
+    Recode numeric-character-classes to allow options to specify
+    configuration, rather than a configuration file.
+
+    Found more quantifiers that specify at most one to wit: {0}, {0,0},
+    and {1,1}
+
+    Eliminate recommendation of Readonly::XS.
+
+    Eliminate redirections in POD URL links
+
 0.000_007	2019-07-09	T. R. Wyant
     Clean up and clarify POD. This actually involved some changes in
     ProhibitNumericCharacterClasses.run to ensure that what I said in
