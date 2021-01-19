@@ -1,3 +1,7 @@
+0.000_009	2021-01-18	T. R. Wyant
+    Get prerequisites up to snuff and add xt/author/prereq.t to ensure
+    they stay that way.
+
 0.000_008	2021-01-04	T. R. Wyant
     Add Travis CI testing.
 
