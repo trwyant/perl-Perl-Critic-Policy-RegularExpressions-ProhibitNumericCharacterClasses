@@ -1,3 +1,6 @@
+0.000_010	2021-02-09	T. R. Wyant
+    Update xt/author/prereq.t to detect unused prereq
+
 0.000_009	2021-01-18	T. R. Wyant
     Get prerequisites up to snuff and add xt/author/prereq.t to ensure
     they stay that way.
