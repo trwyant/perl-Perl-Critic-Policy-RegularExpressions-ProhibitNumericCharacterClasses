@@ -1,7 +1,5 @@
 package main;
 
-use 5.010;
-
 use strict;
 use warnings;
 
@@ -12,8 +10,16 @@ eval {
     1;
 } or plan skip_all => 'Test::Prereq::Meta not available';
 
-Test::Prereq::Meta->new(
-)->all_prereq_ok();
+my $tpm = Test::Prereq::Meta->new(
+    uses	=> [ qw{
+	Carp
+	lib
+	} ],
+);
+
+$tpm->all_prereq_ok();
+
+$tpm->all_prereqs_used();
 
 done_testing;
 
