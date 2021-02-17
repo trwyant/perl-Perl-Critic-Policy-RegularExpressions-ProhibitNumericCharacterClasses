@@ -1,3 +1,8 @@
+0.000_011	2021-02-17	T. R. Wyant
+    Add config_requires to metadata.
+
+    Convert inc/My/Module/Meta to O-O
+
 0.000_010	2021-02-09	T. R. Wyant
     Update xt/author/prereq.t to detect unused prereq
 
