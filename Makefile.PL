@@ -13,27 +13,51 @@ use My::Module::Meta;
 my $meta = My::Module::Meta->new();
 
 my %args = (
-    NAME            => 'Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses',
-    VERSION_FROM    => 'lib/Perl/Critic/Policy/RegularExpressions/ProhibitNumericCharacterClasses.pm',
-    PREREQ_PM       => $meta->required_module_versions(),
+    ABSTRACT	=> $meta->abstract(),
+    AUTHOR	=> $meta->author(),
+    NAME	=> $meta->module_name(),
     PL_FILES        => {},        # Prevent old MakeMaker from running Build.PL
-    AUTHOR          => 'Tom Wyant (wyant at cpan dot org)',
-    ABSTRACT        => 'Critique numeric character classes in Perl source',
+    PREREQ_PM       => $meta->required_module_versions(),
+    realclean	=> {
+	FILES => 'cover_db xt/author/optionals',
+    },
+    VERSION_FROM	=> $meta->version_from(),
 );
 
 $mmv >= 6.31
-    and $args{LICENSE} = 'perl';
+    and $args{LICENSE} = $meta->license();
 
-$mmv >= 6.4501
-    and $args{META_MERGE} = $meta->meta_merge();
+if ( $mmv >= 6.4501 ) {
+    $args{META_ADD} = {
+	no_index => $meta->no_index(),
+    };
+    $args{META_MERGE} = $meta->meta_merge( $meta->provides() );
+}
 
 $mmv >= 6.4701
     and $args{MIN_PERL_VERSION} = $meta->requires_perl();
 
-$mmv >= 6.5501
-    and $args{BUILD_REQUIRES} = $meta->build_required_module_versions()
-    or $mmv >= 6.4501
-    and $args{META_MERGE}{build_requires} = $meta->build_required_module_versions();
+
+if ( $mmv >= 6.52 ) {
+    $args{BUILD_REQUIRES} = $meta->build_required_module_versions();
+    $args{CONFIGURE_REQUIRES} = $meta->configure_requires();
+} elsif ( $mmv >= 6.5501 ) {
+    $args{BUILD_REQUIRES} = $meta->build_required_module_versions();
+    $args{META_MERGE}{configure_requires} = $meta->configure_requires();
+} elsif ( $mmv >= 6.4501 ) {
+    $args{META_MERGE}{build_requires} = $meta->build_required_module_versions();
+    $args{META_MERGE}{configure_requires} = $meta->configure_requires();
+} else {
+    foreach my $method ( qw{
+        configure_requires build_required_module_versions
+    } ) {
+	my $req = $meta->$method();
+	foreach my $key ( keys %{ $req } ) {
+	    exists $args{PREREQ_PM}{$key}
+		or $args{PREREQ_PM}{$key} = $req->{$key};
+	}
+    }
+}
 
 WriteMakefile( %args );
 
