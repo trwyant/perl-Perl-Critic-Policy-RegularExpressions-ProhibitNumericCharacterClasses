@@ -5,19 +5,12 @@ use 5.006001;
 use strict;
 use warnings;
 
-use Carp;
-
-use Exporter qw{ import };
-
 our $VERSION = '0.000_010';
 
-our @EXPORT_OK = qw{
-    meta_merge
-    build_required_module_versions
-    required_module_versions
-    requires_perl
-    recommended_module_versions
-};
+sub new {
+    my ( $class ) = @_;
+    return bless {}, ref $class || $class;
+}
 
 sub meta_merge {
     return {
@@ -58,8 +51,8 @@ sub meta_merge {
 }
 
 sub required_module_versions {
-    my @args = @_;
-    return (
+    my ( undef, @args ) = @_;
+    return +{
         'base'                      => 0,
         'strict'                    => 0,
         'warnings'                  => 0,
@@ -69,27 +62,26 @@ sub required_module_versions {
         'PPIx::Regexp'              => 0.057,
         'Readonly'                  => 0,
         @args,
-    );
+    };
 }
 
 sub build_required_module_versions {
-    return (
+    return +{
         'lib'       => 0,
         'charnames' => 0,
         'open'      => 0,
-        'Carp'      => 0,
         'English'   => 0,
         'PPI::Document'             => 0,
         'Perl::Critic::TestUtils'   => 0,
         'Test::More'                => 0,
         'Test::Perl::Critic::Policy'    => 0,
-    );
+    };
 }
 
 sub recommended_module_versions {
-    return (
+    return {
 ##      'File::Which'   => 0,
-    );
+    };
 }
 
 sub requires_perl {
@@ -114,14 +106,17 @@ My::Module::Meta - Metadata for the current module
 This Perl module holds metadata for the current module. It is private to
 the current module.
 
-=head1 SUBROUTINES
+=head1 METHODS
 
-No subroutines are exported by default, but the following subroutines
-are exportable:
+Ths following public methods are provided:
+
+=head2 new
+
+This static method instantiates the object.
 
 =head2 build_required_module_versions
 
-This subroutine returns an array of the names and versions of modules
+This method returns an array of the names and versions of modules
 required for the build.
 
 =head2 meta_merge
@@ -136,17 +131,17 @@ C<resources> data.
 
 =head2 recommended_module_versions
 
-This subroutine returns an array of the names and versions of
+This method returns an array of the names and versions of
 recommended modules.
 
 =head2 required_module_versions
 
-This subroutine returns an array of the names and versions of required
+This method returns an array of the names and versions of required
 modules. Any arguments will be appended to the returned list.
 
 =head2 requires_perl
 
-This subroutine returns the version of Perl required by the module.
+This method returns the version of Perl required by the module.
 
 =head1 SUPPORT
 

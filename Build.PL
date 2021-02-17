@@ -7,15 +7,11 @@ use lib 'inc';
 
 use Module::Build;
 use My::Module::Build;
-use My::Module::Meta qw{
-    build_required_module_versions
-    meta_merge
-    recommended_module_versions
-    required_module_versions
-    requires_perl
-};
+use My::Module::Meta;
 
 ( my $mbv = Module::Build->VERSION() ) =~ s/_//g;
+
+my $meta = My::Module::Meta->new();
 
 my %args = (
     module_name         => 'Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses',
@@ -25,11 +21,11 @@ my %args = (
     create_packlist     => 1,
     sign                => 0,
 
-    requires            => { required_module_versions(
-                                perl => requires_perl(),
-                            ) },
-    build_requires      => { build_required_module_versions() },
-    recommends          => { recommended_module_versions() },
+    requires            => $meta->required_module_versions(
+                                perl => $meta->requires_perl(),
+                            ),
+    build_requires      => $meta->build_required_module_versions(),
+    recommends          => $meta->recommended_module_versions(),
 
     add_to_cleanup      => [
         qw<
@@ -39,7 +35,7 @@ my %args = (
 );
 
 $mbv >= 0.28
-    and $args{meta_merge} = meta_merge();
+    and $args{meta_merge} = $meta->meta_merge();
 
 $mbv >= 0.34
     and $args{auto_configure_requires} = 0;	# Don't require Module::Build

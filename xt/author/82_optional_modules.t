@@ -8,7 +8,7 @@ use File::Spec;
 
 use lib 'inc';
 
-use My::Module::Meta qw{ recommended_module_versions };
+use My::Module::Meta;
 
 use Test::More;
 
@@ -22,8 +22,9 @@ our $VERSION = '0.000_010';
 # have all the optional modules installed.  Make sure that they know that they
 # don't.  :]
 
+my $meta = My::Module::Meta->new();
 my %module_versions = (
-    recommended_module_versions(),
+    %{ $meta->recommended_module_versions() },
     'Test::Memory::Cycle'   => 0,
     'Test::Without::Module' => 0,
 );

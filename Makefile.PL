@@ -6,20 +6,16 @@ use 5.006001;
 use lib qw{ inc };
 
 use ExtUtils::MakeMaker;
-use My::Module::Meta qw{
-    build_required_module_versions
-    meta_merge
-    required_module_versions
-    requires_perl
-    recommended_module_versions
-};
+use My::Module::Meta;
 
 ( my $mmv = ExtUtils::MakeMaker->VERSION ) =~ s/_//g;
+
+my $meta = My::Module::Meta->new();
 
 my %args = (
     NAME            => 'Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses',
     VERSION_FROM    => 'lib/Perl/Critic/Policy/RegularExpressions/ProhibitNumericCharacterClasses.pm',
-    PREREQ_PM       => { required_module_versions() },
+    PREREQ_PM       => $meta->required_module_versions(),
     PL_FILES        => {},        # Prevent old MakeMaker from running Build.PL
     AUTHOR          => 'Tom Wyant (wyant at cpan dot org)',
     ABSTRACT        => 'Critique numeric character classes in Perl source',
@@ -29,15 +25,15 @@ $mmv >= 6.31
     and $args{LICENSE} = 'perl';
 
 $mmv >= 6.4501
-    and $args{META_MERGE} = meta_merge();
+    and $args{META_MERGE} = $meta->meta_merge();
 
 $mmv >= 6.4701
-    and $args{MIN_PERL_VERSION} = requires_perl();
+    and $args{MIN_PERL_VERSION} = $meta->requires_perl();
 
 $mmv >= 6.5501
-    and $args{BUILD_REQUIRES} = { build_required_module_versions() }
+    and $args{BUILD_REQUIRES} = $meta->build_required_module_versions()
     or $mmv >= 6.4501
-    and $args{META_MERGE}{build_requires} = { build_required_module_versions() };
+    and $args{META_MERGE}{build_requires} = $meta->build_required_module_versions();
 
 WriteMakefile( %args );
 

@@ -5,8 +5,6 @@ use 5.006001;
 use strict;
 use warnings;
 
-use Carp;
-
 use Module::Build;
 our @ISA = qw{ Module::Build };
 
