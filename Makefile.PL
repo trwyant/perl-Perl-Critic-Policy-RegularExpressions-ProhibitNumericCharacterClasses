@@ -15,11 +15,13 @@ my $meta = My::Module::Meta->new();
 my %args = (
     ABSTRACT	=> $meta->abstract(),
     AUTHOR	=> $meta->author(),
+    DISTNAME	=> $meta->dist_name(),
+    EXE_FILES	=> $meta->script_files(),
     NAME	=> $meta->module_name(),
-    PL_FILES        => {},        # Prevent old MakeMaker from running Build.PL
-    PREREQ_PM       => $meta->required_module_versions(),
+    PREREQ_PM	=> $meta->required_module_versions(),
+    PL_FILES	=> {},	# Prevent old MakeMaker from running Build.PL
     realclean	=> {
-	FILES => 'cover_db xt/author/optionals',
+	FILES => join( ' ', @{ $meta->add_to_cleanup() } ),
     },
     VERSION_FROM	=> $meta->version_from(),
 );

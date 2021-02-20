@@ -14,25 +14,19 @@ use My::Module::Meta;
 my $meta = My::Module::Meta->new();
 
 my %args = (
-    add_to_cleanup      => [
-        qw<
-            cover_db
-            Debian_CPANTS.txt
-        >,
-    ],
-    build_requires      => $meta->build_required_module_versions(),
+    add_to_cleanup	=> $meta->add_to_cleanup(),
+    build_requires	=> $meta->build_required_module_versions(),
     configure_requires	=> $meta->configure_requires(),
-    create_packlist     => 1,
     dist_abstract	=> $meta->abstract(),
-    dist_author 	=> $meta->author(),
-    license     	=> $meta->license(),
-    module_name         => $meta->module_name(),
-    sign                => 0,
-    requires            => $meta->required_module_versions(
-                                perl => $meta->requires_perl(),
-                            ),
-    recommends          => $meta->recommended_module_versions(),
-
+    dist_author	=> $meta->author(),
+    dist_name	=> $meta->dist_name(),
+    license	=> $meta->license(),
+    module_name	=> $meta->module_name(),
+    recommends  => $meta->recommended_module_versions(),
+    requires	=> $meta->required_module_versions(
+	perl	=> $meta->requires_perl(),
+    ),
+    script_files	=> $meta->script_files(),
 );
 
 if ( $mbv >= 0.28 ) {

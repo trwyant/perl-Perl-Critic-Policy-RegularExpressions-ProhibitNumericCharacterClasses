@@ -16,6 +16,10 @@ sub abstract {
     return 'Critique numeric character classes in Perl source';
 }
 
+sub add_to_cleanup {
+    return [ qw{ cover_db xt/author/optionals } ];
+}
+
 sub author {
     return 'Thomas R. Wyant, III (wyant at cpan dot org)';
 }
@@ -75,7 +79,7 @@ sub meta_merge {
 	resources	=> {
 	    bugtracker	=> {
                 web => 'https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues',
-##                mailto  => 'wyant@cpan.org',
+                mailto  => 'wyant@cpan.org',
             },
 	    license	=> 'http://dev.perl.org/licenses/',
 	    repository	=> {
@@ -119,7 +123,7 @@ sub provides {
 }
 
 sub recommended_module_versions {
-    return {
+    return +{
 ##      'File::Which'   => 0,
     };
 }
@@ -181,6 +185,11 @@ This static method instantiates the object.
 =head2 abstract
 
 This method returns the distribution's abstract.
+
+=head2 add_to_cleanup
+
+This method returns a reference to an array of files to be added to the
+cleanup.
 
 =head2 author
 
