@@ -49,7 +49,6 @@ sub dist_name {
     return 'Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses';
 }
 
-
 sub license {
     return 'perl';
 }
@@ -78,7 +77,8 @@ sub meta_merge {
 	},
 	resources	=> {
 	    bugtracker	=> {
-                web => 'https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues',
+		web	=> 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses',
+		# web	=> 'https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues',
                 mailto  => 'wyant@cpan.org',
             },
 	    license	=> 'http://dev.perl.org/licenses/',
@@ -275,8 +275,9 @@ distribution's version is to be derived.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>,
-or in electronic mail to the author.
+L<https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses>,
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>, or in
+electronic mail to the author.
 
 =head1 AUTHOR
 

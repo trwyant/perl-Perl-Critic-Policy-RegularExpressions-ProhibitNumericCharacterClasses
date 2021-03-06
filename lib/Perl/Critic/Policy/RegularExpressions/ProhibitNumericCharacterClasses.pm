@@ -193,7 +193,6 @@ sub violates {
             $elem,
         );
 
-
     }
 
     return @violations;
@@ -586,12 +585,10 @@ __END__
 
 Perl::Critic::Policy::RegularExpressions::ProhibitNumericCharacterClasses - Don't use \d and [:digit:], since they may match outside the ASCII range.
 
-
 =head1 AFFILIATION
 
 This Policy is stand-alone, and is not part of the core
 L<Perl::Critic|Perl::Critic>.
-
 
 =head1 DESCRIPTION
 
@@ -659,7 +656,6 @@ strongly advises against turning these on unless you know what you are
 doing. Note that turning on both C<allow_back_slash_dee> and
 C<allow_posix_digit> effectively disables the policy.
 
-
 =head2 allow_back_slash_dee
 
 By default, this policy prohibits C<\d> unless within the scope of the
@@ -670,7 +666,6 @@ F<.perlcriticrc> file:
 
     [RegularExpressions::ProhibitNumericCharacterClasses]
     allow_back_slash_dee = 1
-
 
 =head2 allow_posix_digit
 
@@ -794,8 +789,9 @@ unsure I have covered all the corner cases.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>,
-or in electronic mail to the author.
+L<https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses>,
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>, or in
+electronic mail to the author.
 
 =head1 AUTHOR
 
