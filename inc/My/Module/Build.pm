@@ -8,7 +8,7 @@ use warnings;
 use Module::Build;
 our @ISA = qw{ Module::Build };
 
-our $VERSION = '0.000_012';
+our $VERSION = '0.000_013';
 
 sub ACTION_authortest {
     my ( $self, @args ) = @_;

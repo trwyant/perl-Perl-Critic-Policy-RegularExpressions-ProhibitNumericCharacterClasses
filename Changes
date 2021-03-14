@@ -1,3 +1,6 @@
+0.000_013	2021-03-13	T. R. Wyant
+    Add rt.cpan.org back to bug reporting methods. Long live RT!
+
 0.000_012	2021-02-20	T. R. Wyant
     Add add_to_cleanup() to inc/My/Module/Meta.pm.
 
