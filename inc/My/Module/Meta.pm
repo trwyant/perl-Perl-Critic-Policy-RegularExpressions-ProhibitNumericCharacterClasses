@@ -59,22 +59,6 @@ sub meta_merge {
 	    version	=> 2,
 	},
 #       homepage    => 'http://perlcritic.com',
-	no_index	=> {
-            file        => [
-                qw<
-                    TODO.pod
-                >
-            ],
-            directory   => [
-                qw<
-                    doc
-                    examples
-                    inc
-                    tools
-                    xt
-                >
-            ],
-	},
 	resources	=> {
 	    bugtracker	=> {
 		web	=> 'https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses',
