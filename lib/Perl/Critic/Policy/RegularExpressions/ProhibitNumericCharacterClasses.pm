@@ -799,7 +799,7 @@ Thomas R. Wyant, III F<wyant at cpan dot org>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2018-2021 Thomas R. Wyant, III
+Copyright (C) 2018-2022 Thomas R. Wyant, III
 
 =head1 LICENSE
 
