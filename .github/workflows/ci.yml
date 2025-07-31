@@ -1,6 +1,6 @@
 # Explicit name of workflow. This is optional.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#name
-name: Perl CI v2.0.2b
+name: Perl CI v2.0.2c
 
 # Specify the events that trigger this workflow.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
@@ -90,6 +90,7 @@ jobs:
 
     - name: Display local envoronment variables
       run: |
+        echo MY_HOME=${{ env.MY_HOME }}
         echo MY_MAKE=${{ env.MY_MAKE }}
         echo MY_WANT_MODULES=${{ env.MY_WANT_MODULES }}
 
@@ -132,4 +133,4 @@ jobs:
     - name: Show cpanm install log
       if: failure()
       shell: bash
-      run: cat $HOME/.cpanm/work/*/build.log
+      run: cat $MY_HOME/.cpanm/work/*/build.log

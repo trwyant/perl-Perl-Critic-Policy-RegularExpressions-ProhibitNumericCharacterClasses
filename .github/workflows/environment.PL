@@ -38,10 +38,32 @@ sub compute_environment {
         MY_WANT_MODULES     => join( ' ', want_modules() ),
     );
 
-    $is_windows
-        and @env{ qw{ LINES COLUMNS } } = ( 24, 80 );
+    if ( $is_windows ) {
+        @env{ qw{ LINES COLUMNS } } = ( 24, 80 );
+        $env{MY_HOME} = _compute_windows_home();
+    } else {
+        $env{MY_HOME} = $ENV{HOME};
+    }
 
     return \%env;
+}
+
+# Cribbed from File::HomeDir::Windows::my_home().
+sub _compute_windows_home {
+    foreach ( qw{ HOME USERPROFILE } ) {
+        exists $ENV{$_}
+            and defined $ENV{$_}
+            and length $ENV{$_}
+            and return $ENV{$_};
+    }
+    foreach ( qw{ HOMEDRIVE HOMEPATH } ) {
+        exists $ENV{$_}
+            and defined $ENV{$_}
+            and length $ENV{$_}
+            or die "Can not determine home directory under $^O";
+    }
+    require File::Spec;
+    return File::Spec->catpath( $ENV{HOMEDRIVE}, $ENV{HOMEPATH}, '' );
 }
 
 # NOTE that we rely on the templating system's perl::Type module to
