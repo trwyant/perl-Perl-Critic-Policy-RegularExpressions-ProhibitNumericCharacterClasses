@@ -103,7 +103,6 @@ jobs:
     - name: Install module dependencies
       run: |
         cpanm --with-configure --notest --installdeps .
-        perl -e die
 
     - name: Run ExtUtils::MakeMaker tests
       # Abuse the hashFiles() built-in to see if file exists. From
@@ -126,6 +125,9 @@ jobs:
     # https://perlmaven.com/install-developer-dependencies-first-test-css
     # But rewritten in powershell since that is the only usable shell
     # available to all runners.
+    # FIXME despite my best efforts, this does not work under Windows. I
+    # thought that the v1 version of this did, but I am not now able to
+    # duplicate. Sigh.
     - name: Show cpanm install log
       if: failure()
       shell: pwsh
