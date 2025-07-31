@@ -1,6 +1,6 @@
 # Explicit name of workflow. This is optional.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#name
-name: Perl CI v2.0.2c
+name: Perl CI v2.0.2
 
 # Specify the events that trigger this workflow.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
@@ -90,7 +90,6 @@ jobs:
 
     - name: Display local envoronment variables
       run: |
-        echo MY_HOME=${{ env.MY_HOME }}
         echo MY_MAKE=${{ env.MY_MAKE }}
         echo MY_WANT_MODULES=${{ env.MY_WANT_MODULES }}
 
@@ -102,7 +101,6 @@ jobs:
       run: cpanm --notest ${{ env.MY_WANT_MODULES }}
 
     - name: Install module dependencies
-    # Debug force error to ensure install log dump works under Windows
       run: |
         cpanm --with-configure --notest --installdeps .
         perl -e die
@@ -124,13 +122,18 @@ jobs:
         ./Build
         ./Build test
 
-    # The following technique from Gabor Szabo. Thanks:
+    # The following technique inspired by Gabor Szabo. Thanks:
     # https://perlmaven.com/install-developer-dependencies-first-test-css
-    # NOTE that under Windows bash gives you the system Perl, not the
-    # Perl provided by shogo82148/actions-setup-perl@v1, according to
-    # the docs for that module. That's OK here since we're not using
-    # Perl at all.
+    # But rewritten in powershell since that is the only usable shell
+    # available to all runners.
     - name: Show cpanm install log
       if: failure()
-      shell: bash
-      run: cat $MY_HOME/.cpanm/work/*/build.log
+      shell: pwsh
+      run: |
+        $dirs = Get-ChildItem "$HOME\\.cpanm\\work\\"
+        foreach ( $d in $dirs ) {
+            $file = $d.FullName + "\\build.log"
+            echo ""
+            echo $file
+            type $file
+        }
