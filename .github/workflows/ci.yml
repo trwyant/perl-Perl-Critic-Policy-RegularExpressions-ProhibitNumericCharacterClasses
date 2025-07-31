@@ -1,6 +1,6 @@
 # Explicit name of workflow. This is optional.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#name
-name: Perl CI v2.0.2a
+name: Perl CI v2.0.2b
 
 # Specify the events that trigger this workflow.
 # https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#on
@@ -132,4 +132,4 @@ jobs:
     - name: Show cpanm install log
       if: failure()
       shell: bash
-      run: cat $MY_HOME/.cpanm/work/*/build.log
+      run: cat $HOME/.cpanm/work/*/build.log
