@@ -1,6 +1,7 @@
 Build.PL
 Changes
 CONTRIBUTING
+examples/devanagari.t
 examples/numeric-character-classes
 examples/README
 inc/My/Module/Build.pm

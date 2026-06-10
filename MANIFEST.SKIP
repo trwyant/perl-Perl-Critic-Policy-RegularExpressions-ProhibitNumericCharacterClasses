@@ -72,3 +72,10 @@
 
 # Avoid archives of this distribution
 \bPerl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses-[\d\.\_]+
+
+# Avoid GitHub stuff
+^.github/
+
+# Avoid the author's personal data
+^meta/
+^TODO$
