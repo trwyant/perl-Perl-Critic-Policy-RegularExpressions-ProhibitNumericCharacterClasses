@@ -1,12 +1,11 @@
 I welcome bug reports, patches, and suggestions. I accept these either
-through GitHub at
-https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses,
-by electronic mail to harryfmudd at comcast dot net, or any other way
-that works for you, though I can not accept owls because I have no
-facilities to house them. Non-GitHub requests may be turned into GitHub
-issues by me unless you specifically request otherwise. The bug report,
-patch, or suggestion (if acted on) will also be acknowledged in the
-Changes file unless you specifically request othewise.
+through GitHub at https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses, by
+electronic mail to harryfmudd at comcast dot net, or any other way that
+works for you, though I can not accept owls because I have no facilities
+to house them. Non-GitHub requests may be turned into GitHub issues by
+me unless you specifically request otherwise. The bug report, patch, or
+suggestion (if acted on) will also be acknowledged in the Changes file
+unless you specifically request othewise.
 
 Requests for information probably do not need to be tickets in GitHub,
 and my preferred route for these is by electronic mail, but again

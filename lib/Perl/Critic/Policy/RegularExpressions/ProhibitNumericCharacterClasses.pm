@@ -789,8 +789,7 @@ unsure I have covered all the corner cases.
 =head1 SUPPORT
 
 Support is by the author. Please file bug reports at
-L<https://rt.cpan.org/Public/Dist/Display.html?Name=Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses>,
-L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues>, or in
+L<https://github.com/trwyant/perl-Perl-Critic-Policy-RegularExpressions-ProhibitNumericCharacterClasses/issues> or in
 electronic mail to the author.
 
 =head1 AUTHOR
