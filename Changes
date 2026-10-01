@@ -1,3 +1,6 @@
+0.000_018	2026-09-30	T. R. Wyant
+    Eliminate redundant initializations.
+
 0.000_017	2026-06-10	T. R. Wyant
     Remove references to the RT bug tracking system.
 
