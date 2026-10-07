@@ -5,7 +5,7 @@ use 5.006001;
 use strict;
 use warnings;
 
-our $VERSION = '0.000_018';
+our $VERSION = '0.000_019';
 
 sub new {
     my ( $class ) = @_;

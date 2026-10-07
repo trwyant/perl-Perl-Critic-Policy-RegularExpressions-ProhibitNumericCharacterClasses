@@ -1,3 +1,9 @@
+0.000_019	2026-10-07	T. R. Wyant
+    Correct Makefile.PL EUMM version accommodations.
+    And normalize inc/My/Module/Meta.pm method names.
+
+    Add explicit release_status to metadata.
+
 0.000_018	2026-09-30	T. R. Wyant
     Eliminate redundant initializations.
 
