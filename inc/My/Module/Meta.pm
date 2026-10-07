@@ -24,7 +24,7 @@ sub author {
     return 'Thomas R. Wyant, III (harryfmudd at comcast dot net)';
 }
 
-sub build_required_module_versions {
+sub build_requires {
     return +{
         'lib'       => 0,
         'charnames' => 0,
@@ -210,7 +210,7 @@ cleanup.
 
 This method returns the name of the distribution author
 
-=head2 build_required_module_versions
+=head2 build_requires
 
 This method returns an array of the names and versions of modules
 required for the build.

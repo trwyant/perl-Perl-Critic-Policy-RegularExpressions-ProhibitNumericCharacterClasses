@@ -15,7 +15,7 @@ my $meta = My::Module::Meta->new();
 
 my %args = (
     add_to_cleanup	=> $meta->add_to_cleanup(),
-    build_requires	=> $meta->build_required_module_versions(),
+    build_requires	=> $meta->build_requires(),
     configure_requires	=> $meta->configure_requires(),
     dist_abstract	=> $meta->abstract(),
     dist_author	=> $meta->author(),

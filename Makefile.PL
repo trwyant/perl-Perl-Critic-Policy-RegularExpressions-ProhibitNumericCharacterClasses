@@ -18,7 +18,7 @@ my %args = (
     DISTNAME	=> $meta->dist_name(),
     EXE_FILES	=> $meta->script_files(),
     NAME	=> $meta->module_name(),
-    PREREQ_PM	=> $meta->required_module_versions(),
+    PREREQ_PM	=> $meta->requires(),
     PL_FILES	=> {},	# Prevent old MakeMaker from running Build.PL
     realclean	=> {
 	FILES => join( ' ', @{ $meta->add_to_cleanup() } ),
@@ -41,18 +41,18 @@ $mmv >= 6.4701
     and $args{MIN_PERL_VERSION} = $meta->requires_perl();
 
 
-if ( $mmv >= 6.52 ) {
-    $args{BUILD_REQUIRES} = $meta->build_required_module_versions();
+if ( $mmv >= 6.55_03 ) {
+    $args{BUILD_REQUIRES} = $meta->build_requires();
     $args{CONFIGURE_REQUIRES} = $meta->configure_requires();
-} elsif ( $mmv >= 6.5501 ) {
-    $args{BUILD_REQUIRES} = $meta->build_required_module_versions();
-    $args{META_MERGE}{configure_requires} = $meta->configure_requires();
-} elsif ( $mmv >= 6.4501 ) {
-    $args{META_MERGE}{build_requires} = $meta->build_required_module_versions();
+} elsif ( $mmv >= 6.52 ) {
+    $args{META_MERGE}{build_requires} = $meta->build_requires();
+    $args{CONFIGURE_REQUIRES} = $meta->configure_requires();
+} elsif ( $mmv >= 6.45_01 ) {
+    $args{META_MERGE}{build_requires} = $meta->build_requires();
     $args{META_MERGE}{configure_requires} = $meta->configure_requires();
 } else {
     foreach my $method ( qw{
-        configure_requires build_required_module_versions
+        configure_requires build_requires
     } ) {
 	my $req = $meta->$method();
 	foreach my $key ( keys %{ $req } ) {
