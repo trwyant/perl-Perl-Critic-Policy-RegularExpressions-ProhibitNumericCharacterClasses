@@ -31,7 +31,7 @@ BEGIN {
 
 use charnames qw{ :full };
 
-our $VERSION = '0.000_019';
+our $VERSION = '0.000_020';
 
 Readonly::Scalar my $CODE_REF   => ref sub {};
 Readonly::Scalar my $SCALAR_REF => ref \0;
